@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ПФ → товары">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<title>ПФ → товары · калькулятор настоек</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#171c24; --card2:#1c2230; --line:#262d3a;
+    --txt:#e8eaed; --muted:#98a2b0; --acc:#e0a63f; --acc2:#53d39a;
+    --input:#0b0e13; --danger:#f0706b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg); color:var(--txt); color-scheme:dark;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 112px}
+  header{padding:10px 2px 16px}
+  h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
+  .sub{color:var(--muted);font-size:13px}
+  .stats{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:10px 14px;min-width:120px}
+  .stat b{display:block;font-size:20px;color:var(--acc)}
+  .stat span{font-size:12px;color:var(--muted)}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+     margin:22px 2px 10px;font-weight:600}
+  .pf{background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:12px}
+  .pf.active{border-color:var(--acc)}
+  .pf .nm{flex:1;font-weight:500;font-size:14px}
+  .stepper{display:flex;align-items:center;gap:6px}
+  .stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+     background:var(--card2);color:var(--txt);font-size:19px;cursor:pointer;
+     display:flex;align-items:center;justify-content:center;user-select:none}
+  .stepper button:active{background:#232a37}
+  .stepper input{width:74px;height:38px;border-radius:10px;border:1px solid var(--line);
+     background:var(--input);color:var(--txt);text-align:center;font-size:15px;
+     -moz-appearance:textfield}
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .u{font-size:12px;color:var(--muted);width:16px;text-align:center}
+  .savebar{display:flex;gap:8px;margin-top:16px}
+  .savebar input{flex:1;height:44px;border-radius:12px;border:1px solid var(--line);
+     background:var(--input);color:var(--txt);padding:0 12px;font-size:15px}
+  .savebar button{height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
+     background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
+  .savebar button.primary{background:var(--acc);color:#171103;border-color:var(--acc)}
+  .bar{display:flex;gap:8px;margin-top:10px}
+  .bar button{flex:1;height:44px;border-radius:12px;border:1px solid var(--line);
+     background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
+  .bar button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
+     margin-top:8px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px 14px;text-align:left;font-size:14px}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;
+     border-bottom:1px solid var(--line)}
+  td{border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:none}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--acc2)}
+  td.unit{color:var(--muted);font-size:12px}
+  .empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
+  .hist{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .hist:last-child{border-bottom:none}
+  .hist .hd{font-weight:600;font-size:14px;min-width:88px}
+  .hist .hs{flex:1;font-size:12px;color:var(--muted)}
+  .hist button{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
+     background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
+  .hist .del{width:34px;padding:0;color:var(--danger)}
+  .detail{background:var(--card);border:1px solid var(--line);border-radius:14px;
+     margin-top:8px;padding:4px 0}
+  .detail .grp{padding:10px 14px;border-bottom:1px solid var(--line)}
+  .detail .grp:last-child{border-bottom:none}
+  .detail .grp b{font-size:14px}
+  .detail .row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px;color:var(--muted)}
+  .detail .row .v{color:var(--txt);font-variant-numeric:tabular-nums}
+  details summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:14px;
+     color:var(--acc);list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  footer{margin-top:22px;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
+  #printArea{display:none}
+  @media print{
+    body{background:#fff;color:#000;font-size:12px}
+    .wrap{display:none !important}
+    #printArea{display:block !important;padding:10px}
+    #printArea h1{font-size:18px;margin:0 0 2px}
+    #printArea .pmeta{color:#555;font-size:12px;margin-bottom:10px}
+    #printArea h2{font-size:13px;margin:14px 0 6px;border-bottom:1px solid #999;
+       padding-bottom:3px;text-transform:none;color:#000}
+    #printArea table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    #printArea th,#printArea td{border:1px solid #999;padding:4px 6px;text-align:left;font-size:11px}
+    #printArea td.num{text-align:right}
+    #printArea .pempty{color:#999}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Калькулятор ПФ → товары</h1>
+    <div class="sub">Разборка настоек по ТТК · норма на 1 л готового ПФ</div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b id="stPf">0</b><span>настоек с остатком</span></div>
+    <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
+    <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
+  </div>
+
+  <h2>Остатки настоек (л)</h2>
+  <div id="pfList"></div>
+
+  <div class="savebar">
+    <input type="date" id="saveDate">
+    <button id="btnSave" class="primary">Сохранить</button>
+  </div>
+  <div class="bar">
+    <button id="btnReset">Сбросить</button>
+    <button id="btnPrint">Печать отчёта</button>
+  </div>
+
+  <h2>Сохранённые подсчёты</h2>
+  <div class="panel"><div id="history"></div></div>
+
+  <h2>Итог по товарам</h2>
+  <div class="panel"><div id="result"></div></div>
+
+  <details>
+    <summary>Раскладка по настойкам</summary>
+    <div class="detail" id="detail"></div>
+  </details>
+
+  <footer>
+    Вода и цедра из рецептов исключены · банан ×1,778 и ананас ×1,688 (брутто).<br>
+    Работает офлайн. Сохранение хранится в памяти браузера этого устройства.
+  </footer>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+const RECIPES = [{"n": "Коровка", "items": [["Конфеты Коровка", "кг", 0.357143], ["Водка 5 Озер коктейльная 1л", "л", 0.357143], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.285714], ["Бонификатор пищевая добавка (бар)", "кг", 0.007143]]}, {"n": "Ананас Ваниль на роме", "items": [["Ром коктейльный Девил Айленд 1л", "л", 0.625], ["Ананас свежий", "кг", 0.844], ["Сахар-песок Aro", "кг", 0.15], ["Перец душистый горошек METRO Chef", "кг", 0.0025], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Ежевика Лайм на джине", "items": [["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Ежевика с/м", "кг", 0.533333], ["Сахар-песок Aro", "кг", 0.16], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Тимьян свежий", "кг", 0.001333], ["Ароматизатор пищевой Ежевика (бар)", "л", 5e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Клубника Базилик на джине", "items": [["Клубника с/м", "кг", 0.533333], ["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Базилик свежий (реган) в пучках", "кг", 0.021333], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Манго Чили на текиле", "items": [["Манго с/м кусочки", "кг", 0.533333], ["Текила коктейльная Ла Павеса 0,7л", "л", 0.666667], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Перец Чили стручковый", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Вишня Миндаль на бренди", "items": [["Вишня без косточки с/м", "кг", 0.5], ["Бренди Матис 5 лет коктейльтный 0,5л", "л", 0.625], ["Сироп Амаретто 1 л Монин", "л", 0.125], ["Сахар-песок Aro", "кг", 0.175], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Банан шоколад", "items": [["Банан", "кг", 0.677333], ["Водка 5 Озер коктейльная 1л", "л", 0.47619], ["Ароматизатор пищевой Банан (бар)", "л", 2e-06], ["Шоколад молочный Alpen Gold", "кг", 0.190476], ["Бонификатор пищевая добавка (бар)", "кг", 0.004762], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.380952]]}, {"n": "Клубника со сливками", "items": [["Водка Царская Ваниль 0,5 л", "л", 0.526316], ["Клубника с/м", "кг", 0.368421], ["Сахар-песок Aro", "кг", 0.178947], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.315789], ["Ароматизатор пищевой Клубника (бар)", "л", 2e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.007368]]}, {"n": "7 овощей", "items": [["Набор на овощную настойку 1 шт 0.540 ФК", "шт", 1.25], ["Водка 5 Озер коктейльная 1л", "л", 0.875], ["Бонификатор пищевая добавка (бар)", "кг", 0.0075]]}, {"n": "Вишня - гранат", "items": [["Водка 5 Озер коктейльная 1л", "л", 0.740741], ["Набор для настойки вишня гранат 1 шт 1,6 кг ФК", "шт", 0.37037], ["Бонификатор пищевая добавка (бар)", "кг", 0.005556]]}, {"n": "Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.588235], ["Водка 5 Озер коктейльная 1л", "л", 0.588235], ["Супер джус лимон ФК", "л", 0.176471], ["Бонификатор пищевая добавка (бар)", "кг", 0.005882]]}, {"n": "Крем Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.540541], ["Водка 5 Озер коктейльная 1л", "л", 0.540541], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.27027], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.004324], ["Бонификатор пищевая добавка (бар)", "кг", 0.008108]]}, {"n": "Соленая карамель", "items": [["Кордиал соленая карамель ФК", "л", 0.545455], ["Водка 5 Озер коктейльная 1л", "л", 0.454545], ["Бонификатор пищевая добавка (бар)", "кг", 0.010909]]}, {"n": "Маракуйя", "items": [["Пюре маракуйя зам. HQ purée/Agrobar/ArtPuree", "кг", 0.4], ["Водка 5 Озер коктейльная 1л", "л", 0.6], ["Сахар-песок Aro", "кг", 0.086], ["Бонификатор пищевая добавка (бар)", "кг", 0.006]]}, {"n": "На малине", "items": [["Малина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.416667], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}, {"n": "На черной смородине", "items": [["Черная смородина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.333333], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}];
+const LS_KEY = "pf_history_v1";
+
+function fmt(v){
+  if(v === 0) return "0";
+  const r = Math.round(v * 1000) / 1000;
+  return (Object.is(r, -0) ? 0 : r).toLocaleString("ru-RU", {maximumFractionDigits:3});
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function localToday(){
+  const d = new Date();
+  const l = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return l.toISOString().slice(0,10);
+}
+
+function getQ(i){
+  const inp = document.querySelector('input[data-i="'+i+'"]');
+  return parseFloat((inp.value||"").replace(",", ".")) || 0;
+}
+function setQ(i, q){
+  const inp = document.querySelector('input[data-i="'+i+'"]');
+  inp.value = q ? q : "";
+  inp.closest(".pf").classList.toggle("active", q > 0);
+}
+function getInputs(){
+  const out = {};
+  RECIPES.forEach((r,i)=>{ const q = getQ(i); if(q > 0) out[r.n] = q; });
+  return out;
+}
+function setAllInputs(pf){
+  RECIPES.forEach((r,i)=>{ setQ(i, pf[r.n] || 0); });
+}
+
+function computeTotals(v){
+  const totals = {};
+  const byPf = {};
+  let vol = 0, cnt = 0;
+  RECIPES.forEach((r,i)=>{
+    const q = v[r.n] || 0;
+    if(q <= 0) return;
+    cnt++; vol += q;
+    byPf[r.n] = [];
+    r.items.forEach(it=>{
+      const t=it[0], u=it[1], norm=it[2];
+      const add = q * norm;
+      byPf[r.n].push({t:t, u:u, v:add});
+      if(totals[t]) totals[t].v += add;
+      else totals[t] = {u:u, v:add};
+    });
+  });
+  return {totals:totals, byPf:byPf, vol:vol, cnt:cnt};
+}
+
+function addStep(i, d){
+  let q = getQ(i);
+  q = Math.max(0, Math.round((q + d) * 100) / 100);
+  setQ(i, q);
+  recompute();
+}
+
+function recompute(){
+  const v = getInputs();
+  const c = computeTotals(v);
+  document.getElementById("stPf").textContent = c.cnt;
+  document.getElementById("stVol").textContent = fmt(c.vol);
+  const rows = Object.entries(c.totals).sort((a,b)=>b[1].v-a[1].v);
+  document.getElementById("stTov").textContent = rows.length;
+  const box = document.getElementById("result");
+  if(!rows.length){
+    box.innerHTML = '<div class="empty">Введите объём хотя бы одной настойки</div>';
+  }else{
+    let h = '<table><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
+    rows.forEach(([t,o])=>{
+      h += '<tr><td>'+esc(t)+'</td><td class="num">'+fmt(o.v)+'</td><td class="unit">'+esc(o.u)+'</td></tr>';
+    });
+    h += '</table>';
+    box.innerHTML = h;
+  }
+  const dbox = document.getElementById("detail");
+  const names = Object.keys(c.byPf);
+  if(!names.length){
+    dbox.innerHTML = '<div class="empty">Нет данных</div>';
+  }else{
+    let h = '';
+    names.forEach(n=>{
+      h += '<div class="grp"><b>'+esc(n)+'</b>';
+      c.byPf[n].sort((a,b)=>b.v-a.v).forEach(r=>{
+        h += '<div class="row"><span>'+esc(r.t)+'</span><span class="v">'+fmt(r.v)+' '+esc(r.u)+'</span></div>';
+      });
+      h += '</div>';
+    });
+    dbox.innerHTML = h;
+  }
+}
+
+function getHist(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+  catch(e){ return []; }
+}
+function setHist(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+
+function saveRecord(){
+  const date = document.getElementById("saveDate").value || localToday();
+  const v = getInputs();
+  const c = computeTotals(v);
+  let hist = getHist().filter(x => x.date !== date);
+  hist.push({date: date, pf: v, n_pf: c.cnt, n_tov: Object.keys(c.totals).length, vol: c.vol});
+  hist.sort((a,b)=> a.date < b.date ? -1 : 1);
+  setHist(hist);
+  document.getElementById("saveDate").value = date;
+  renderHist();
+}
+function loadRecord(date){
+  const r = getHist().find(x => x.date === date);
+  if(!r) return;
+  setAllInputs(r.pf || {});
+  document.getElementById("saveDate").value = date;
+  recompute();
+}
+function delRecord(date){
+  setHist(getHist().filter(x => x.date !== date));
+  renderHist();
+}
+function renderHist(){
+  const box = document.getElementById("history");
+  const hist = getHist();
+  if(!hist.length){
+    box.innerHTML = '<div class="empty">Сохранений пока нет</div>';
+    return;
+  }
+  let h = '';
+  hist.forEach(r=>{
+    h += '<div class="hist">'
+       +   '<div class="hd">'+esc(r.date)+'</div>'
+       +   '<div class="hs">настоек: '+r.n_pf+' · товаров: '+r.n_tov+' · '+fmt(r.vol)+' л</div>'
+       +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
+       +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
+       + '</div>';
+  });
+  box.innerHTML = h;
+}
+
+function doPrint(){
+  const v = getInputs();
+  const c = computeTotals(v);
+  const date = document.getElementById("saveDate").value || localToday();
+  const area = document.getElementById("printArea");
+  let h = '<h1>Разборка ПФ → товары</h1>';
+  h += '<div class="pmeta">Дата подсчёта: '+esc(date)+' · сформировано: '+esc(localToday())+'</div>';
+  if(!c.cnt){
+    h += '<p class="pempty">Нет данных — введите объёмы настоек.</p>';
+  }else{
+    h += '<h2>Настойки (ПФ) — '+c.cnt+' шт · '+fmt(c.vol)+' л</h2>';
+    h += '<table><tr><th>Настойка</th><th>Объём, л</th></tr>';
+    const pfSorted = Object.entries(v).sort((a,b)=>b[1]-a[1]);
+    pfSorted.forEach(([n,q])=>{
+      h += '<tr><td>'+esc(n)+'</td><td class="num">'+fmt(q)+'</td></tr>';
+    });
+    h += '</table>';
+    h += '<h2>Итог по товарам</h2>';
+    h += '<table><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
+    Object.entries(c.totals).sort((a,b)=>b[1].v-a[1].v).forEach(([t,o])=>{
+      h += '<tr><td>'+esc(t)+'</td><td class="num">'+fmt(o.v)+'</td><td>'+esc(o.u)+'</td></tr>';
+    });
+    h += '</table>';
+  }
+  area.innerHTML = h;
+  window.print();
+}
+
+function resetAll(){
+  RECIPES.forEach((r,i)=>setQ(i, 0));
+  recompute();
+}
+
+function build(){
+  const list = document.getElementById("pfList");
+  RECIPES.forEach((r, i)=>{
+    const card = document.createElement("div");
+    card.className = "pf";
+    const nm = document.createElement("div");
+    nm.className = "nm"; nm.textContent = r.n;
+    const st = document.createElement("div");
+    st.className = "stepper";
+    const bm = document.createElement("button");
+    bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
+    inp.dataset.i = i; inp.addEventListener("input", recompute);
+    const bp = document.createElement("button");
+    bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
+    st.append(bm, inp, bp);
+    const u = document.createElement("div");
+    u.className = "u"; u.textContent = "л";
+    card.append(nm, st, u);
+    list.appendChild(card);
+  });
+}
+
+document.getElementById("btnReset").addEventListener("click", resetAll);
+document.getElementById("btnPrint").addEventListener("click", doPrint);
+document.getElementById("btnSave").addEventListener("click", saveRecord);
+document.getElementById("history").addEventListener("click", function(e){
+  const b = e.target.closest("button");
+  if(!b) return;
+  const d = b.dataset.date;
+  if(b.classList.contains("del")) delRecord(d);
+  else loadRecord(d);
+});
+document.getElementById("saveDate").value = localToday();
+
+build();
+renderHist();
+recompute();
+</script>
+</body>
+</html>
