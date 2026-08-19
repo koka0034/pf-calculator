@@ -121,6 +121,10 @@
   .goods td.gn{text-align:left;padding-right:6px;word-break:break-word}
   .goods input{width:100%;max-width:76px;height:34px;border-radius:8px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);text-align:center;font-size:13px;padding:0 2px}
+  .goods .fstep{display:flex;align-items:center;justify-content:center;gap:4px}
+  .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
+  .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
+  .goods td.calcval{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;min-width:52px}
   .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
@@ -232,7 +236,7 @@
 
     <div class="bar">
       <button id="btnInvSave" class="primary">Сохранить</button>
-      <button id="btnInvReset">Очистить факт</button>
+      <button id="btnInvReset">Очистить расчёт</button>
       <button id="btnInvPrint">Печать</button>
     </div>
     <div class="bar">
@@ -558,6 +562,16 @@ function updateDiffCell(tr, key){
   td.className = "diff " + (d > 0.0005 ? "pos" : d < -0.0005 ? "neg" : "zero");
 }
 
+function stepFor(u){ return u === "шт" ? 1 : 0.1; }
+function stepFact(tr, key, inp, d){
+  const cur = invState.fact[key] !== undefined ? invState.fact[key] : 0;
+  let next = Math.round((cur + d) * 1000) / 1000;
+  if(next < 0) next = 0;
+  if(next === 0){ delete invState.fact[key]; inp.value = ""; }
+  else { invState.fact[key] = next; inp.value = next; }
+  updateDiffCell(tr, key); updateInvStats(); invSaveState();
+}
+
 function renderInvGroups(){
   const box = document.getElementById("invGroups");
   box.innerHTML = "";
@@ -601,16 +615,19 @@ function renderInvGroups(){
         if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
         updateDiffCell(tr, key); updateInvStats(); invSaveState();
       });
-      tdFact.appendChild(f);
+      const st = document.createElement("div"); st.className = "stepper fstep";
+      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
+      bm.onclick = ()=>stepFact(tr, key, f, -stepFor(gd.u));
+      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
+      bp.onclick = ()=>stepFact(tr, key, f, stepFor(gd.u));
+      st.append(bm, f, bp);
+      tdFact.appendChild(st);
 
       const tdCalc = document.createElement("td");
-      const c = document.createElement("input"); c.inputMode="decimal"; c.placeholder="0";
-      c.value = invState.calc[key] !== undefined ? invState.calc[key] : "";
-      c.addEventListener("input", ()=>{
-        if(c.value.trim()==="") delete invState.calc[key]; else invState.calc[key] = toNum(c.value)||0;
-        updateDiffCell(tr, key); updateInvStats(); invSaveState();
-      });
-      tdCalc.appendChild(c);
+      tdCalc.className = "calcval";
+      const cv = document.createElement("span");
+      cv.textContent = invState.calc[key] !== undefined ? fmt(invState.calc[key]) : "";
+      tdCalc.appendChild(cv);
 
       const tdDiff = document.createElement("td"); tdDiff.className = "diff";
       tr.append(tdName, tdFact, tdCalc, tdDiff);
@@ -719,8 +736,8 @@ function invSave(){
   toast("Сохранено: " + invRest);
 }
 function invReset(){
-  if(!confirm("Очистить все значения «факт»?")) return;
-  invState.fact = {};
+  if(!confirm("Очистить все значения «расчёт»?")) return;
+  invState.calc = {};
   invSaveState();
   renderInvGroups();
   updateInvStats();
