@@ -662,9 +662,9 @@ function renderInvGroups(){
 function updateInvStats(){
   let total = 0, counted = 0, diffs = 0;
   INV_GROUPS.forEach(g=>{
-    const isBase = (g.g === "База данных");
+    if(g.g === "База данных") return;
     g.goods.forEach(gd=>{
-      if(!isBase) total++;
+      total++;
       const key = goodKey(g.g, gd.n);
       if(invState.fact[key] !== undefined) counted++;
       const f = invState.fact[key] || 0;
@@ -682,6 +682,7 @@ function renderInvDiff(){
   const box = document.getElementById("invDiffList");
   const rows = [];
   INV_GROUPS.forEach(g=>{
+    if(g.g === "База данных") return;
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
       const counted = invState.fact[key] !== undefined;
