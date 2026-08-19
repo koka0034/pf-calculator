@@ -124,7 +124,6 @@
   .goods .fstep{display:flex;align-items:center;justify-content:center;gap:4px}
   .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
   .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
-  .goods td.calcval{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;min-width:52px}
   .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
@@ -599,7 +598,7 @@ function renderInvGroups(){
 
     const tbl = document.createElement("table");
     tbl.className = "goods";
-    tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th><th>Расчёт</th><th>±</th></tr>';
+    tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th><th>±</th></tr>';
     g.goods.forEach((gd, ii)=>{
       const key = goodKey(g.g, gd.n);
       const tr = document.createElement("tr");
@@ -623,14 +622,8 @@ function renderInvGroups(){
       st.append(bm, f, bp);
       tdFact.appendChild(st);
 
-      const tdCalc = document.createElement("td");
-      tdCalc.className = "calcval";
-      const cv = document.createElement("span");
-      cv.textContent = invState.calc[key] !== undefined ? fmt(invState.calc[key]) : "";
-      tdCalc.appendChild(cv);
-
       const tdDiff = document.createElement("td"); tdDiff.className = "diff";
-      tr.append(tdName, tdFact, tdCalc, tdDiff);
+      tr.append(tdName, tdFact, tdDiff);
       tbl.appendChild(tr);
       updateDiffCell(tr, key);
     });
@@ -782,12 +775,13 @@ function closeImport(){ document.getElementById("invImportBox").classList.add("h
 function applyRows(rows, target){
   const map = {};
   INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ const c = canon(gd.n); if(!(c in map)) map[c] = goodKey(g.g, gd.n); }); });
-  let matched = 0, added = 0;
+  let written = 0, existing = 0, added = 0;
   rows.forEach(pr=>{
     if(!pr) return;
     const c = canon(pr.name);
     let key = map[c];
-    if(key === undefined){
+    const isExisting = key !== undefined;
+    if(!isExisting){
       let grp = INV_GROUPS.find(g=>g.g === "Импортированные");
       if(!grp){ grp = {g:"Импортированные", goods:[]}; INV_GROUPS.push(grp); }
       grp.goods.push({n:pr.name, u:"шт"});
@@ -796,12 +790,13 @@ function applyRows(rows, target){
       added++;
     }
     if(target === "calc") invState.calc[key] = pr.qty; else invState.fact[key] = pr.qty;
-    matched++;
+    written++;
+    if(isExisting) existing++;
   });
   if(added) invPersistDict();
   invSaveState();
   renderInvGroups(); updateInvStats();
-  return {matched:matched, added:added};
+  return {written:written, existing:existing, added:added};
 }
 
 function doImport(){
@@ -824,8 +819,8 @@ function doImport(){
   const target = document.getElementById("invImportTarget").value;
   const rows = document.getElementById("invImportText").value.split(/\r?\n/).map(parseImportLine).filter(Boolean);
   const r = applyRows(rows, target);
-  res.textContent = "Записано: " + r.matched + " · добавлено новых: " + r.added;
-  toast("Импорт: " + r.matched + " поз.");
+  res.textContent = "Обновлено в списке: " + r.existing + " · новых: " + r.added;
+  toast("Импорт: " + r.existing + " поз. обновлено");
 }
 
 const NAME_KEYS = ["наименован","назван","товар","номенклатур","продукт","ингредиент","блюдо","позици"];
@@ -938,9 +933,9 @@ function handleFile(file){
         return;
       }
       const r2 = applyRows(p.rows, target);
-      res.textContent = "Файл «" + file.name + "»: записано " + r2.matched + " · новых " + r2.added
+      res.textContent = "Файл «" + file.name + "»: обновлено в списке " + r2.existing + " · новых " + r2.added
         + (p.sample.length ? " · пример: " + p.sample.join(" · ") : "");
-      toast("Файл импортирован: " + r2.matched + " поз.");
+      toast("Импорт: обновлено " + r2.existing + " поз.");
     }catch(err){
       res.textContent = "Ошибка чтения файла: " + err.message;
     }
