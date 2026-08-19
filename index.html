@@ -811,6 +811,90 @@ function doImport(){
   toast("Импорт: " + r.matched + " поз.");
 }
 
+const NAME_KEYS = ["наименован","назван","товар","номенклатур","продукт","ингредиент","блюдо","позици"];
+const QTY_KEYS = ["остаток","колич","кол-во","кол.","кол ","факт","фактич","на конец"];
+
+function findHeaderAndColumns(aoa){
+  for(let ri=0; ri<Math.min(aoa.length, 30); ri++){
+    const r = aoa[ri] || [];
+    let nameCol = -1, qtyCol = -1;
+    for(let ci=0; ci<r.length; ci++){
+      const cell = String(r[ci]||"").toLowerCase().trim();
+      if(nameCol < 0 && NAME_KEYS.some(k=>cell.includes(k))) nameCol = ci;
+      if(qtyCol < 0 && QTY_KEYS.some(k=>cell.includes(k))) qtyCol = ci;
+    }
+    if(nameCol >= 0) return {headerRow:ri, nameCol:nameCol, qtyCol:qtyCol};
+  }
+  return null;
+}
+
+function guessColumns(aoa){
+  const colCount = Math.max(0, ...aoa.map(r=>r?r.length:0));
+  let nameCol = 0, bestText = -1;
+  for(let ci=0; ci<colCount; ci++){
+    let text = 0;
+    for(let ri=0; ri<aoa.length; ri++){
+      const s = String((aoa[ri]&&aoa[ri][ci])==null?"":(aoa[ri]&&aoa[ri][ci])).trim();
+      if(s && isNaN(toNum(s))) text++;
+    }
+    if(text > bestText){ bestText = text; nameCol = ci; }
+  }
+  let qtyCol = -1;
+  for(let ci=0; ci<colCount; ci++){
+    if(ci === nameCol) continue;
+    let num = 0, text = 0;
+    for(let ri=0; ri<aoa.length; ri++){
+      const s = String((aoa[ri]&&aoa[ri][ci])==null?"":(aoa[ri]&&aoa[ri][ci])).trim();
+      if(!s) continue;
+      if(isNaN(toNum(s))) text++; else num++;
+    }
+    if(num > 0 && num >= text){ qtyCol = ci; break; }
+  }
+  return {nameCol:nameCol, qtyCol:qtyCol};
+}
+
+function parseWorkbook(wb){
+  const candidates = [];
+  wb.SheetNames.forEach(sn=>{
+    const ws = wb.Sheets[sn];
+    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    const nonEmpty = aoa.filter(r=>r && r.some(c=>String(c||"").trim()!=="")).length;
+    candidates.push({aoa:aoa, nonEmpty:nonEmpty});
+  });
+  let sheetAoa = null, header = null, bestNonEmpty = 0;
+  candidates.forEach(c=>{
+    const h = findHeaderAndColumns(c.aoa);
+    if(h && c.nonEmpty > bestNonEmpty){ bestNonEmpty = c.nonEmpty; sheetAoa = c.aoa; header = h; }
+  });
+  if(!sheetAoa){
+    candidates.forEach(c=>{ if(c.nonEmpty > bestNonEmpty){ bestNonEmpty = c.nonEmpty; sheetAoa = c.aoa; } });
+  }
+  if(!sheetAoa) return {rows:[], sample:[]};
+
+  let nameCol, qtyCol, startRow;
+  if(header){
+    nameCol = header.nameCol; qtyCol = header.qtyCol; startRow = header.headerRow + 1;
+  }else{
+    const g = guessColumns(sheetAoa);
+    nameCol = g.nameCol; qtyCol = g.qtyCol; startRow = 0;
+  }
+
+  const rows = [], sample = [];
+  for(let ri=startRow; ri<sheetAoa.length; ri++){
+    const r = sheetAoa[ri] || [];
+    if(!r.some(c=>String(c||"").trim()!=="")) continue;
+    const nm = String(r[nameCol]||"").trim();
+    if(!nm) continue;
+    let qty = NaN;
+    if(qtyCol >= 0) qty = toNum(r[qtyCol]);
+    else { for(let ci=0; ci<r.length; ci++){ const v = toNum(r[ci]); if(!isNaN(v)){ qty=v; break; } } }
+    if(isNaN(qty)) continue;
+    rows.push({name:nm, qty:qty});
+    if(sample.length < 3) sample.push(nm);
+  }
+  return {rows:rows, sample:sample};
+}
+
 function handleFile(file){
   const res = document.getElementById("invImportRes");
   const target = document.getElementById("invImportTarget").value;
@@ -820,19 +904,14 @@ function handleFile(file){
     try{
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type:"array"});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-      const rows = [];
-      aoa.forEach(r=>{
-        if(!r || !r.length) return;
-        const nm = String(r[0]||"").trim();
-        if(!nm) return;
-        let qty = NaN;
-        for(let i=r.length-1; i>=1; i--){ const v = toNum(r[i]); if(!isNaN(v)){ qty=v; break; } }
-        if(!isNaN(qty)) rows.push({name:nm, qty:qty});
-      });
-      const r2 = applyRows(rows, target);
-      res.textContent = "Файл «" + file.name + "»: записано " + r2.matched + " · новых " + r2.added;
+      const p = parseWorkbook(wb);
+      if(!p.rows.length){
+        res.textContent = "Не удалось распознать таблицу. Убедитесь, что в файле есть столбцы «название» и «количество», или пришлите пример отчёта.";
+        return;
+      }
+      const r2 = applyRows(p.rows, target);
+      res.textContent = "Файл «" + file.name + "»: записано " + r2.matched + " · новых " + r2.added
+        + (p.sample.length ? " · пример: " + p.sample.join(" · ") : "");
       toast("Файл импортирован: " + r2.matched + " поз.");
     }catch(err){
       res.textContent = "Ошибка чтения файла: " + err.message;
