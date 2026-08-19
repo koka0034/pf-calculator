@@ -139,6 +139,17 @@
   .grpadd{width:100%;height:44px;margin-top:6px;border-radius:12px;border:1px dashed var(--line);
        background:transparent;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
   .grpadd:hover{color:var(--acc);border-color:var(--acc)}
+  .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
+       background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
+  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
+       background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
+  .blankimp:hover{border-color:var(--acc);color:var(--acc)}
+  .totop{position:fixed;right:16px;bottom:18px;width:46px;height:46px;border-radius:50%;
+       border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
+       cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
+       box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
+  .totop.show{display:flex}
+  #blankFile{display:none}
   #invImportBox{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
   #invImportFile{display:block;width:100%;margin-bottom:10px;font-size:13px;color:var(--muted)}
   #invImportBox textarea{width:100%;height:130px;border-radius:10px;border:1px solid var(--line);
@@ -222,6 +233,7 @@
         <input type="text" id="invRestNew" placeholder="Новый ресторан">
         <button id="btnRestAdd">Добавить</button>
       </div>
+      <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
     </div>
 
     <div class="stats">
@@ -230,16 +242,17 @@
       <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
     </div>
 
+    <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <div id="invGroups"></div>
     <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
 
     <div class="bar">
       <button id="btnInvSave" class="primary">Сохранить</button>
       <button id="btnInvReset">Очистить расчёт</button>
-      <button id="btnInvPrint">Печать</button>
+      <button id="btnInvFill" class="primary">Заполнить бланк</button>
     </div>
     <div class="bar">
-      <button id="btnInvExport">Экспорт</button>
+      <button id="btnInvExport">Экспорт JSON</button>
       <button id="btnInvImport">Импорт JSON</button>
       <button id="btnInvImportCalc">Импорт отчёта (.xlsx)</button>
     </div>
@@ -270,6 +283,9 @@
     Работает офлайн. Данные хранятся в памяти браузера этого устройства.
   </footer>
 </div>
+
+<input type="file" id="blankFile" accept=".xls,.xlsx">
+<button id="btnTop" class="totop" title="Наверх">↑</button>
 
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
@@ -490,6 +506,7 @@ let invRest = "";
 let invState = { counters:{}, fact:{}, calc:{} };
 let invShowAll = false;
 let invImportMode = "tsv";
+let invSearch = "";
 
 function goodKey(g, n){ return g + "||" + n; }
 function canon(s){ return String(s||"").toLowerCase().replace(/@/g," ").replace(/\s+/g," ").trim(); }
@@ -574,15 +591,18 @@ function stepFact(tr, key, inp, d){
 function renderInvGroups(){
   const box = document.getElementById("invGroups");
   box.innerHTML = "";
+  const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
+    const goods = q ? g.goods.filter(gd => canon(gd.n).includes(q) || canon(g.g).includes(q)) : g.goods;
+    if(q && !goods.length) return;
     const det = document.createElement("details");
     det.className = "igrp";
-    const has = g.goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined);
-    det.open = has;
+    const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined);
+    det.open = has || !!q;
     const sum = document.createElement("summary");
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
     const gnm = document.createElement("span"); gnm.className="gnm"; gnm.textContent = g.g;
-    const gcnt = document.createElement("span"); gcnt.className="gcnt"; gcnt.textContent = g.goods.length + " поз.";
+    const gcnt = document.createElement("span"); gcnt.className="gcnt"; gcnt.textContent = goods.length + " поз.";
     sum.append(caret, gnm, gcnt);
     det.appendChild(sum);
 
@@ -599,7 +619,7 @@ function renderInvGroups(){
     const tbl = document.createElement("table");
     tbl.className = "goods";
     tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th><th>±</th></tr>';
-    g.goods.forEach((gd, ii)=>{
+    goods.forEach((gd, ii)=>{
       const key = goodKey(g.g, gd.n);
       const tr = document.createElement("tr");
       const tdName = document.createElement("td"); tdName.className = "gn";
@@ -955,30 +975,103 @@ function invExport(){
   toast("Экспортировано");
 }
 
-function doPrintInv(){
-  const area = document.getElementById("printArea");
-  const date = localToday();
-  let h = '<h1>Инвентаризация — ' + esc(invRest || "без ресторана") + '</h1>';
-  h += '<div class="pmeta">Сформировано: ' + esc(date) + '</div>';
-  const hasData = INV_GROUPS.some(g=>g.goods.some(gd=>invState.fact[goodKey(g.g,gd.n)] !== undefined));
-  if(!hasData){
-    h += '<p class="pempty">Нет данных — заполните фактический остаток.</p>';
-  }else{
-    INV_GROUPS.forEach(g=>{
-      const items = g.goods.filter(gd=>invState.fact[goodKey(g.g,gd.n)] !== undefined);
-      if(!items.length) return;
-      h += '<h2>' + esc(g.g) + (invState.counters[g.g] ? ' — считал(а): ' + esc(invState.counters[g.g]) : '') + '</h2>';
-      h += '<table><tr><th>Товар</th><th>Факт</th><th>Расчёт</th><th>Расх.</th></tr>';
-      items.forEach(gd=>{
-        const k = goodKey(g.g,gd.n);
-        const f = invState.fact[k]||0, c = invState.calc[k]||0;
-        h += '<tr><td>'+esc(gd.n)+'</td><td class="num">'+fmt(f)+'</td><td class="num">'+fmt(c)+'</td><td class="num">'+fmtDiff(f-c)+'</td></tr>';
-      });
-      h += '</table>';
-    });
+function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
+function parseBlankWorkbook(wb){
+  const ws = wb.Sheets["Товары"];
+  if(!ws) return null;
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+  const groups = [];
+  let cur = null;
+  for(let r=8; r<aoa.length; r++){
+    const row = aoa[r] || [];
+    const c0 = String(row[0]||"").trim();
+    const c2 = String(row[2]||"").trim();
+    const c3 = String(row[3]||"").trim();
+    if(!c0 && !c2) continue;
+    if(c0 === "Товар" || c0 === "Группа" || /^\d+\s*из\s*\d+$/.test(c0)) continue;
+    if(c0.indexOf("Инвентаризацию произвел") === 0) continue;
+    if(c0){
+      const gname = cleanBlank(c0).replace(/\s*\(т\)\s*$/i, "").trim();
+      cur = groups.find(g=>g.g === gname);
+      if(!cur){ cur = {g:gname, goods:[]}; groups.push(cur); }
+    }
+    if(!c2) continue;
+    const name = cleanBlank(c2);
+    if(!name || name === "Наименование" || name === "Ед. изм.") continue;
+    const unit = cleanBlank(c3) || "шт";
+    if(cur) cur.goods.push({n:name, u:unit});
   }
-  area.innerHTML = h;
-  window.print();
+  return groups.filter(g=>g.goods.length);
+}
+function bufToB64(buf){
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  return btoa(bin);
+}
+function b64ToBuf(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function handleBlankFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:"array"});
+      const groups = parseBlankWorkbook(wb);
+      if(!groups || !groups.length){ toast("Не удалось найти товары в бланке"); return; }
+      INV_GROUPS = groups;
+      invPersistDict();
+      try{ localStorage.setItem(INV_LS + "_blank", bufToB64(data)); }catch(err){}
+      renderInvGroups(); updateInvStats();
+      const total = groups.reduce((s,g)=>s+g.goods.length,0);
+      toast("Бланк импортирован: " + groups.length + " групп, " + total + " товаров");
+    }catch(err){ toast("Ошибка чтения бланка: " + err.message); }
+  };
+  reader.onerror = function(){ toast("Не удалось прочитать файл"); };
+  reader.readAsArrayBuffer(file);
+}
+function fillBlank(){
+  const loadWb = function(wb){
+    const ws = wb.Sheets["Товары"];
+    if(!ws){ toast("В бланке нет листа «Товары»"); return; }
+    const factByName = {};
+    INV_GROUPS.forEach(g=>g.goods.forEach(gd=>{
+      const k = goodKey(g.g, gd.n);
+      if(invState.fact[k] !== undefined) factByName[canon(gd.n)] = invState.fact[k];
+    }));
+    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    let filled = 0;
+    for(let r=8; r<aoa.length; r++){
+      const row = aoa[r] || [];
+      const c2 = String(row[2]||"").trim();
+      if(!c2) continue;
+      const name = canon(c2.replace(/@/g," "));
+      if(factByName[name] !== undefined){
+        ws[XLSX.utils.encode_cell({r:r, c:4})] = {t:"n", v:factByName[name]};
+        filled++;
+      }
+    }
+    const out = XLSX.write(wb, {type:"array", bookType:"xlsx"});
+    const blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Бланк инвентаризации " + (invRest || "бар") + " " + localToday() + ".xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(a.href);
+    toast("Бланк заполнен: " + filled + " позиций");
+  };
+  const stored = localStorage.getItem(INV_LS + "_blank");
+  if(stored){
+    loadWb(XLSX.read(b64ToBuf(stored), {type:"array"}));
+  }else{
+    fetch("blank.xls").then(r=>r.arrayBuffer()).then(ab=>loadWb(XLSX.read(new Uint8Array(ab), {type:"array"}))).catch(()=>toast("Не удалось загрузить шаблон бланка"));
+  }
 }
 
 function switchTab(tab){
@@ -1008,10 +1101,13 @@ function initInv(){
   document.getElementById("btnGrpAdd").addEventListener("click", addGroup);
   document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
-  document.getElementById("btnInvPrint").addEventListener("click", doPrintInv);
+  document.getElementById("btnInvFill").addEventListener("click", fillBlank);
   document.getElementById("btnInvExport").addEventListener("click", invExport);
   document.getElementById("btnInvImport").addEventListener("click", openImportJson);
   document.getElementById("btnInvImportCalc").addEventListener("click", openImportCalc);
+  document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
+  document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
+  document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvImportDo").addEventListener("click", doImport);
   document.getElementById("btnInvImportCancel").addEventListener("click", closeImport);
   document.getElementById("invImportFile").addEventListener("change", (e)=>{ handleFile(e.target.files && e.target.files[0]); });
@@ -1042,6 +1138,10 @@ renderHist();
 recompute();
 
 initInv();
+
+const btnTop = document.getElementById("btnTop");
+window.addEventListener("scroll", ()=>{ btnTop.classList.toggle("show", window.scrollY > 400); });
+btnTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
 </script>
 </body>
 </html>
