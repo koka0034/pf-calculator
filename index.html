@@ -520,11 +520,11 @@ function invJSON(k, d){ try{ const r = JSON.parse(localStorage.getItem(k)); retu
 function invSetJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 
 function invLoadDict(){
-  const d = invJSON(INV_LS + "_dict", null);
+  const d = invJSON(INV_LS + "_dict_v2", null);
   if(Array.isArray(d) && d.length) return d;
   return JSON.parse(JSON.stringify(DEFAULT_GROUPS));
 }
-function invPersistDict(){ invSetJSON(INV_LS + "_dict", INV_GROUPS); }
+function invPersistDict(){ invSetJSON(INV_LS + "_dict_v2", INV_GROUPS); }
 
 function invLoadRests(){ return invJSON(INV_LS + "_rests", []); }
 function invPersistRests(){ invSetJSON(INV_LS + "_rests", invRestaurants); }
