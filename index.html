@@ -817,13 +817,24 @@ const QTY_KEYS = ["остаток","колич","кол-во","кол.","кол 
 function findHeaderAndColumns(aoa){
   for(let ri=0; ri<Math.min(aoa.length, 30); ri++){
     const r = aoa[ri] || [];
-    let nameCol = -1, qtyCol = -1;
+    let nameCol = -1;
     for(let ci=0; ci<r.length; ci++){
       const cell = String(r[ci]||"").toLowerCase().trim();
       if(nameCol < 0 && NAME_KEYS.some(k=>cell.includes(k))) nameCol = ci;
-      if(qtyCol < 0 && QTY_KEYS.some(k=>cell.includes(k))) qtyCol = ci;
     }
-    if(nameCol >= 0) return {headerRow:ri, nameCol:nameCol, qtyCol:qtyCol};
+    if(nameCol < 0) continue;
+    let qtyCol = -1;
+    for(let ci=r.length-1; ci>=0; ci--){
+      const cell = String(r[ci]||"").toLowerCase().trim();
+      if(cell === "итого" || cell.includes("итого")){ qtyCol = ci; break; }
+    }
+    if(qtyCol < 0){
+      for(let ci=0; ci<r.length; ci++){
+        const cell = String(r[ci]||"").toLowerCase().trim();
+        if(QTY_KEYS.some(k=>cell.includes(k))){ qtyCol = ci; break; }
+      }
+    }
+    return {headerRow:ri, nameCol:nameCol, qtyCol:qtyCol};
   }
   return null;
 }
@@ -883,7 +894,7 @@ function parseWorkbook(wb){
   for(let ri=startRow; ri<sheetAoa.length; ri++){
     const r = sheetAoa[ri] || [];
     if(!r.some(c=>String(c||"").trim()!=="")) continue;
-    const nm = String(r[nameCol]||"").trim();
+    const nm = String(r[nameCol]||"").replace(/@/g," ").replace(/\s+/g," ").trim();
     if(!nm) continue;
     let qty = NaN;
     if(qtyCol >= 0) qty = toNum(r[qtyCol]);
