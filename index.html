@@ -137,6 +137,7 @@
        background:transparent;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
   .grpadd:hover{color:var(--acc);border-color:var(--acc)}
   #invImportBox{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  #invImportFile{display:block;width:100%;margin-bottom:10px;font-size:13px;color:var(--muted)}
   #invImportBox textarea{width:100%;height:130px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:10px;font-size:13px;font-family:inherit;resize:vertical}
   #invImportBox .row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
@@ -217,7 +218,6 @@
       <div class="row">
         <input type="text" id="invRestNew" placeholder="Новый ресторан">
         <button id="btnRestAdd">Добавить</button>
-        <button id="btnRestDel" class="danger" title="Удалить выбранный ресторан">✕</button>
       </div>
     </div>
 
@@ -238,12 +238,13 @@
     <div class="bar">
       <button id="btnInvExport">Экспорт</button>
       <button id="btnInvImport">Импорт JSON</button>
-      <button id="btnInvImportCalc">Импорт расчёта</button>
+      <button id="btnInvImportCalc">Импорт отчёта (.xlsx)</button>
     </div>
 
     <div id="invImportBox" class="hidden">
       <div class="sub" id="invImportTitle">Импорт</div>
-      <textarea id="invImportText" placeholder="Название товара&#10;Количество"></textarea>
+      <input type="file" id="invImportFile" accept=".xlsx,.xls">
+      <textarea id="invImportText" placeholder="…или вставьте текст: название + количество"></textarea>
       <div class="row">
         <select id="invImportTarget">
           <option value="calc">Записать в «расчёт»</option>
@@ -270,6 +271,7 @@
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
+<script src="xlsx.full.min.js"></script>
 <script>
 const RECIPES = [{"n": "Коровка", "items": [["Конфеты Коровка", "кг", 0.357143], ["Водка 5 Озер коктейльная 1л", "л", 0.357143], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.285714], ["Бонификатор пищевая добавка (бар)", "кг", 0.007143]]}, {"n": "Ананас Ваниль на роме", "items": [["Ром коктейльный Девил Айленд 1л", "л", 0.625], ["Ананас свежий", "кг", 0.844], ["Сахар-песок Aro", "кг", 0.15], ["Перец душистый горошек METRO Chef", "кг", 0.0025], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Ежевика Лайм на джине", "items": [["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Ежевика с/м", "кг", 0.533333], ["Сахар-песок Aro", "кг", 0.16], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Тимьян свежий", "кг", 0.001333], ["Ароматизатор пищевой Ежевика (бар)", "л", 5e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Клубника Базилик на джине", "items": [["Клубника с/м", "кг", 0.533333], ["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Базилик свежий (реган) в пучках", "кг", 0.021333], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Манго Чили на текиле", "items": [["Манго с/м кусочки", "кг", 0.533333], ["Текила коктейльная Ла Павеса 0,7л", "л", 0.666667], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Перец Чили стручковый", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Вишня Миндаль на бренди", "items": [["Вишня без косточки с/м", "кг", 0.5], ["Бренди Матис 5 лет коктейльтный 0,5л", "л", 0.625], ["Сироп Амаретто 1 л Монин", "л", 0.125], ["Сахар-песок Aro", "кг", 0.175], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Банан шоколад", "items": [["Банан", "кг", 0.677333], ["Водка 5 Озер коктейльная 1л", "л", 0.47619], ["Ароматизатор пищевой Банан (бар)", "л", 2e-06], ["Шоколад молочный Alpen Gold", "кг", 0.190476], ["Бонификатор пищевая добавка (бар)", "кг", 0.004762], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.380952]]}, {"n": "Клубника со сливками", "items": [["Водка Царская Ваниль 0,5 л", "л", 0.526316], ["Клубника с/м", "кг", 0.368421], ["Сахар-песок Aro", "кг", 0.178947], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.315789], ["Ароматизатор пищевой Клубника (бар)", "л", 2e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.007368]]}, {"n": "7 овощей", "items": [["Набор на овощную настойку 1 шт 0.540 ФК", "шт", 1.25], ["Водка 5 Озер коктейльная 1л", "л", 0.875], ["Бонификатор пищевая добавка (бар)", "кг", 0.0075]]}, {"n": "Вишня - гранат", "items": [["Водка 5 Озер коктейльная 1л", "л", 0.740741], ["Набор для настойки вишня гранат 1 шт 1,6 кг ФК", "шт", 0.37037], ["Бонификатор пищевая добавка (бар)", "кг", 0.005556]]}, {"n": "Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.588235], ["Водка 5 Озер коктейльная 1л", "л", 0.588235], ["Супер джус лимон ФК", "л", 0.176471], ["Бонификатор пищевая добавка (бар)", "кг", 0.005882]]}, {"n": "Крем Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.540541], ["Водка 5 Озер коктейльная 1л", "л", 0.540541], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.27027], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.004324], ["Бонификатор пищевая добавка (бар)", "кг", 0.008108]]}, {"n": "Соленая карамель", "items": [["Кордиал соленая карамель ФК", "л", 0.545455], ["Водка 5 Озер коктейльная 1л", "л", 0.454545], ["Бонификатор пищевая добавка (бар)", "кг", 0.010909]]}, {"n": "Маракуйя", "items": [["Пюре маракуйя зам. HQ purée/Agrobar/ArtPuree", "кг", 0.4], ["Водка 5 Озер коктейльная 1л", "л", 0.6], ["Сахар-песок Aro", "кг", 0.086], ["Бонификатор пищевая добавка (бар)", "кг", 0.006]]}, {"n": "На малине", "items": [["Малина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.416667], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}, {"n": "На черной смородине", "items": [["Черная смородина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.333333], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}];
 const LS_KEY = "pf_history_v1";
@@ -568,9 +570,7 @@ function renderInvGroups(){
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
     const gnm = document.createElement("span"); gnm.className="gnm"; gnm.textContent = g.g;
     const gcnt = document.createElement("span"); gcnt.className="gcnt"; gcnt.textContent = g.goods.length + " поз.";
-    const gdel = document.createElement("button"); gdel.className="grpdel"; gdel.type="button"; gdel.textContent="✕"; gdel.title="Удалить группу";
-    gdel.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); delGroup(gi); };
-    sum.append(caret, gnm, gcnt, gdel);
+    sum.append(caret, gnm, gcnt);
     det.appendChild(sum);
 
     const body = document.createElement("div");
@@ -592,9 +592,7 @@ function renderInvGroups(){
       const tdName = document.createElement("td"); tdName.className = "gn";
       const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
       const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
-      const del = document.createElement("button"); del.className = "gdel"; del.type="button"; del.textContent="✕"; del.title="Удалить товар";
-      del.onclick = ()=>delGood(gi, ii);
-      tdName.append(nmSpan, unSpan, " ", del);
+      tdName.append(nmSpan, unSpan);
 
       const tdFact = document.createElement("td");
       const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0";
@@ -693,18 +691,6 @@ function addGood(gi){
   updateInvStats();
   toast("Товар добавлен");
 }
-function delGood(gi, ii){
-  const g = INV_GROUPS[gi];
-  const gd = g.goods[ii];
-  if(!confirm("Удалить «" + gd.n + "»?")) return;
-  delete invState.fact[goodKey(g.g, gd.n)];
-  delete invState.calc[goodKey(g.g, gd.n)];
-  g.goods.splice(ii, 1);
-  invPersistDict();
-  invSaveState();
-  renderInvGroups();
-  updateInvStats();
-}
 function addGroup(){
   const name = (prompt("Название группы:") || "").trim();
   if(!name) return;
@@ -712,17 +698,6 @@ function addGroup(){
   INV_GROUPS.push({g:name, goods:[]});
   invPersistDict();
   renderInvGroups();
-}
-function delGroup(gi){
-  const g = INV_GROUPS[gi];
-  if(!confirm("Удалить группу «" + g.g + "» (" + g.goods.length + " поз.)?")) return;
-  g.goods.forEach(gd=>{ const k=goodKey(g.g,gd.n); delete invState.fact[k]; delete invState.calc[k]; });
-  delete invState.counters[g.g];
-  INV_GROUPS.splice(gi, 1);
-  invPersistDict();
-  invSaveState();
-  renderInvGroups();
-  updateInvStats();
 }
 
 function addRest(){
@@ -737,17 +712,6 @@ function addRest(){
   invState = invLoadState(invRest);
   renderInvGroups(); updateInvStats();
   toast("Ресторан добавлен");
-}
-function delRest(){
-  if(!invRest) return;
-  if(!confirm("Удалить ресторан «" + invRest + "» и его данные?")) return;
-  localStorage.removeItem(invRestKey(invRest));
-  invRestaurants = invRestaurants.filter(r=>r!==invRest);
-  invPersistRests();
-  invRest = invRestaurants[0] || "";
-  renderRestSelect();
-  invState = invLoadState(invRest);
-  renderInvGroups(); updateInvStats();
 }
 function invSave(){
   if(!invRest){ toast("Сначала добавьте ресторан"); return; }
@@ -780,48 +744,29 @@ function parseImportLine(line){
 
 function openImportCalc(){
   invImportMode = "tsv";
-  document.getElementById("invImportTitle").textContent = "Импорт из отчёта «остатки на складах»";
+  document.getElementById("invImportTitle").textContent = "Импорт отчёта «остатки на складах» (.xlsx)";
   document.getElementById("invImportTarget").style.display = "";
+  document.getElementById("invImportFile").style.display = "";
   document.getElementById("invImportBox").classList.remove("hidden");
   document.getElementById("invImportText").value = "";
   document.getElementById("invImportRes").textContent = "";
-  document.getElementById("invImportText").focus();
 }
 function openImportJson(){
   invImportMode = "json";
   document.getElementById("invImportTitle").textContent = "Импорт JSON (бланк целиком)";
   document.getElementById("invImportTarget").style.display = "none";
+  document.getElementById("invImportFile").style.display = "none";
   document.getElementById("invImportBox").classList.remove("hidden");
   document.getElementById("invImportText").value = "";
   document.getElementById("invImportRes").textContent = "";
 }
 function closeImport(){ document.getElementById("invImportBox").classList.add("hidden"); }
 
-function doImport(){
-  const text = document.getElementById("invImportText").value;
-  const res = document.getElementById("invImportRes");
-  if(invImportMode === "json"){
-    try{
-      const obj = JSON.parse(text);
-      if(obj.dict && Array.isArray(obj.dict)){ INV_GROUPS = obj.dict; invPersistDict(); }
-      if(obj.counters) Object.assign(invState.counters, obj.counters);
-      const merge = (src, dst)=>{ if(src) for(const k in src){ if(dst[k]===undefined) dst[k]=src[k]; } };
-      merge(obj.fact, invState.fact);
-      merge(obj.calc, invState.calc);
-      invSaveState();
-      renderInvGroups(); updateInvStats();
-      res.textContent = "Импортировано";
-      toast("Импортировано");
-    }catch(e){ res.textContent = "Ошибка JSON: " + e.message; }
-    return;
-  }
-  const target = document.getElementById("invImportTarget").value;
+function applyRows(rows, target){
   const map = {};
   INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ const c = canon(gd.n); if(!(c in map)) map[c] = goodKey(g.g, gd.n); }); });
   let matched = 0, added = 0;
-  const lines = text.split(/\r?\n/);
-  lines.forEach(line=>{
-    const pr = parseImportLine(line);
+  rows.forEach(pr=>{
     if(!pr) return;
     const c = canon(pr.name);
     let key = map[c];
@@ -839,8 +784,62 @@ function doImport(){
   if(added) invPersistDict();
   invSaveState();
   renderInvGroups(); updateInvStats();
-  res.textContent = "Записано: " + matched + " · добавлено новых: " + added;
-  toast("Импорт: " + matched + " поз.");
+  return {matched:matched, added:added};
+}
+
+function doImport(){
+  const res = document.getElementById("invImportRes");
+  if(invImportMode === "json"){
+    try{
+      const obj = JSON.parse(document.getElementById("invImportText").value);
+      if(obj.dict && Array.isArray(obj.dict)){ INV_GROUPS = obj.dict; invPersistDict(); }
+      if(obj.counters) Object.assign(invState.counters, obj.counters);
+      const merge = (src, dst)=>{ if(src) for(const k in src){ if(dst[k]===undefined) dst[k]=src[k]; } };
+      merge(obj.fact, invState.fact);
+      merge(obj.calc, invState.calc);
+      invSaveState();
+      renderInvGroups(); updateInvStats();
+      res.textContent = "Импортировано";
+      toast("Импортировано");
+    }catch(e){ res.textContent = "Ошибка JSON: " + e.message; }
+    return;
+  }
+  const target = document.getElementById("invImportTarget").value;
+  const rows = document.getElementById("invImportText").value.split(/\r?\n/).map(parseImportLine).filter(Boolean);
+  const r = applyRows(rows, target);
+  res.textContent = "Записано: " + r.matched + " · добавлено новых: " + r.added;
+  toast("Импорт: " + r.matched + " поз.");
+}
+
+function handleFile(file){
+  const res = document.getElementById("invImportRes");
+  const target = document.getElementById("invImportTarget").value;
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+      const rows = [];
+      aoa.forEach(r=>{
+        if(!r || !r.length) return;
+        const nm = String(r[0]||"").trim();
+        if(!nm) return;
+        let qty = NaN;
+        for(let i=r.length-1; i>=1; i--){ const v = toNum(r[i]); if(!isNaN(v)){ qty=v; break; } }
+        if(!isNaN(qty)) rows.push({name:nm, qty:qty});
+      });
+      const r2 = applyRows(rows, target);
+      res.textContent = "Файл «" + file.name + "»: записано " + r2.matched + " · новых " + r2.added;
+      toast("Файл импортирован: " + r2.matched + " поз.");
+    }catch(err){
+      res.textContent = "Ошибка чтения файла: " + err.message;
+    }
+  };
+  reader.onerror = function(){ res.textContent = "Не удалось прочитать файл"; };
+  reader.readAsArrayBuffer(file);
 }
 
 function invExport(){
@@ -904,7 +903,6 @@ function initInv(){
     renderInvGroups(); updateInvStats();
   });
   document.getElementById("btnRestAdd").addEventListener("click", addRest);
-  document.getElementById("btnRestDel").addEventListener("click", delRest);
   document.getElementById("btnGrpAdd").addEventListener("click", addGroup);
   document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
@@ -914,6 +912,7 @@ function initInv(){
   document.getElementById("btnInvImportCalc").addEventListener("click", openImportCalc);
   document.getElementById("btnInvImportDo").addEventListener("click", doImport);
   document.getElementById("btnInvImportCancel").addEventListener("click", closeImport);
+  document.getElementById("invImportFile").addEventListener("change", (e)=>{ handleFile(e.target.files && e.target.files[0]); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
     document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: только расхождения" : "Показать: все";
