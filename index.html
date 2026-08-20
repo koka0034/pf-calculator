@@ -72,6 +72,12 @@
   .bar button{flex:1;min-width:110px;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .bar button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .sb{height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
+     background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
+  .sb.on{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .sbstatus{font-size:12px;color:var(--muted)}
+  .sbstatus.ok{color:var(--acc2)}
+  .sbstatus.err{color:var(--danger)}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
      margin-top:8px;overflow:hidden}
   table{width:100%;border-collapse:collapse}
@@ -237,6 +243,8 @@
       <select id="invRest"></select>
       <label for="invDate">Дата инвентаризации</label>
       <input type="date" id="invDate">
+      <button id="btnSb" class="sb">Включить совместный режим</button>
+      <span class="sbstatus" id="sbStatus"></span>
       <div class="bar">
         <button id="btnInvSave" class="primary">Сохранить</button>
       </div>
@@ -322,6 +330,7 @@
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="xlsx.full.min.js"></script>
 <script>
 const RECIPES = [{"n": "Коровка", "items": [["Конфеты Коровка", "кг", 0.357143], ["Водка 5 Озер коктейльная 1л", "л", 0.357143], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.285714], ["Бонификатор пищевая добавка (бар)", "кг", 0.007143]]}, {"n": "Ананас Ваниль на роме", "items": [["Ром коктейльный Девил Айленд 1л", "л", 0.625], ["Ананас свежий", "кг", 0.844], ["Сахар-песок Aro", "кг", 0.15], ["Перец душистый горошек METRO Chef", "кг", 0.0025], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Ежевика Лайм на джине", "items": [["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Ежевика с/м", "кг", 0.533333], ["Сахар-песок Aro", "кг", 0.16], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Тимьян свежий", "кг", 0.001333], ["Ароматизатор пищевой Ежевика (бар)", "л", 5e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Клубника Базилик на джине", "items": [["Клубника с/м", "кг", 0.533333], ["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Базилик свежий (реган) в пучках", "кг", 0.021333], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Манго Чили на текиле", "items": [["Манго с/м кусочки", "кг", 0.533333], ["Текила коктейльная Ла Павеса 0,7л", "л", 0.666667], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Перец Чили стручковый", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Вишня Миндаль на бренди", "items": [["Вишня без косточки с/м", "кг", 0.5], ["Бренди Матис 5 лет коктейльтный 0,5л", "л", 0.625], ["Сироп Амаретто 1 л Монин", "л", 0.125], ["Сахар-песок Aro", "кг", 0.175], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Банан шоколад", "items": [["Банан", "кг", 0.677333], ["Водка 5 Озер коктейльная 1л", "л", 0.47619], ["Ароматизатор пищевой Банан (бар)", "л", 2e-06], ["Шоколад молочный Alpen Gold", "кг", 0.190476], ["Бонификатор пищевая добавка (бар)", "кг", 0.004762], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.380952]]}, {"n": "Клубника со сливками", "items": [["Водка Царская Ваниль 0,5 л", "л", 0.526316], ["Клубника с/м", "кг", 0.368421], ["Сахар-песок Aro", "кг", 0.178947], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.315789], ["Ароматизатор пищевой Клубника (бар)", "л", 2e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.007368]]}, {"n": "7 овощей", "items": [["Набор на овощную настойку 1 шт 0.540 ФК", "шт", 1.25], ["Водка 5 Озер коктейльная 1л", "л", 0.875], ["Бонификатор пищевая добавка (бар)", "кг", 0.0075]]}, {"n": "Вишня - гранат", "items": [["Водка 5 Озер коктейльная 1л", "л", 0.740741], ["Набор для настойки вишня гранат 1 шт 1,6 кг ФК", "шт", 0.37037], ["Бонификатор пищевая добавка (бар)", "кг", 0.005556]]}, {"n": "Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.588235], ["Водка 5 Озер коктейльная 1л", "л", 0.588235], ["Супер джус лимон ФК", "л", 0.176471], ["Бонификатор пищевая добавка (бар)", "кг", 0.005882]]}, {"n": "Крем Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.540541], ["Водка 5 Озер коктейльная 1л", "л", 0.540541], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.27027], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.004324], ["Бонификатор пищевая добавка (бар)", "кг", 0.008108]]}, {"n": "Соленая карамель", "items": [["Кордиал соленая карамель ФК", "л", 0.545455], ["Водка 5 Озер коктейльная 1л", "л", 0.454545], ["Бонификатор пищевая добавка (бар)", "кг", 0.010909]]}, {"n": "Маракуйя", "items": [["Пюре маракуйя зам. HQ purée/Agrobar/ArtPuree", "кг", 0.4], ["Водка 5 Озер коктейльная 1л", "л", 0.6], ["Сахар-песок Aro", "кг", 0.086], ["Бонификатор пищевая добавка (бар)", "кг", 0.006]]}, {"n": "На малине", "items": [["Малина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.416667], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}, {"n": "На черной смородине", "items": [["Черная смородина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.333333], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}];
@@ -575,6 +584,79 @@ function invSaveState(){
   invSetJSON(invRestKey(invRest), invState);
 }
 
+/* ---------- Совместный режим (Supabase Realtime) ---------- */
+const SB_URL = "https://gxrasjhpkjdmcndbknpi.supabase.co";
+const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4cmFzamhwa2pkbWNuZGJrbnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMTk5NDIsImV4cCI6MjEwMjc5NTk0Mn0.96bodWC7HiY_2iTYQD8aR5Neo2q9LlwULNjQIrDeP9w";
+let sb = null, sbChannel = null, sbActive = false, sbWarehouse = "", sbDate = "";
+
+function sbSetStatus(msg, ok){
+  const el = document.getElementById("sbStatus");
+  if(el){ el.textContent = msg || ""; el.className = "sbstatus" + (ok ? " ok" : " err"); }
+}
+function sbUpdateBtn(){
+  const b = document.getElementById("btnSb");
+  if(b){ b.textContent = sbActive ? "Выключить совместный режим" : "Включить совместный режим"; b.classList.toggle("on", sbActive); }
+}
+function sbClient(){
+  if(sb) return sb;
+  if(!window.supabase){ sbSetStatus("Библиотека Supabase не загрузилась", false); return null; }
+  try{ sb = window.supabase.createClient(SB_URL, SB_ANON, { realtime:{ params:{ eventsPerSecond:10 } } }); }
+  catch(e){ sbSetStatus("Ошибка инициализации", false); return null; }
+  return sb;
+}
+function sbReportDate(){ return (document.getElementById("invDate").value || "").trim(); }
+
+async function sbToggle(){
+  if(sbActive){ sbStop(); return; }
+  const c = sbClient(); if(!c) return;
+  const date = sbReportDate();
+  if(!date){ toast("Сначала укажите дату инвентаризации"); return; }
+  sbSetStatus("Подключение…", true);
+  const { data, error } = await c.from("inventory_reports")
+    .select("fact").eq("warehouse", invRest).eq("report_date", date).maybeSingle();
+  if(error){ sbSetStatus("Ошибка: " + error.message, false); return; }
+  const serverFact = (data && data.fact && typeof data.fact === "object") ? data.fact : {};
+  const localFact = invState.fact || {};
+  if(Object.keys(serverFact).length){ invState.fact = serverFact; }
+  else if(Object.keys(localFact).length){
+    const { error: se } = await c.rpc("update_fact", { p_warehouse: invRest, p_report_date: date, p_fact: localFact });
+    if(se){ sbSetStatus("Ошибка: " + se.message, false); return; }
+  }
+  sbWarehouse = invRest; sbDate = date; sbActive = true;
+  sbChannel = c.channel("inv_" + invRest + "_" + Date.now())
+    .on("postgres_changes", { event:"*", schema:"public", table:"inventory_reports" }, (payload)=>{
+      const row = payload.new;
+      if(!row) return;
+      if(row.warehouse !== sbWarehouse) return;
+      if((row.report_date || "") !== sbDate) return;
+      invState.fact = Object.assign({}, row.fact || {});
+      renderInvGroups(); updateInvStats();
+    })
+    .subscribe((st)=>{
+      if(st === "SUBSCRIBED"){ sbSetStatus("Синхронизация активна · " + sbWarehouse + " · " + sbDate, true); }
+      else if(st === "CHANNEL_ERROR" || st === "TIMED_OUT"){ sbSetStatus("Нет связи с сервером", false); }
+    });
+  sbUpdateBtn(); renderInvGroups(); updateInvStats();
+  toast("Совместный режим включён");
+}
+
+function sbStop(){
+  if(sbChannel){ try{ sbChannel.unsubscribe(); }catch(e){} sbChannel = null; }
+  sbActive = false;
+  sbSetStatus("", false);
+  sbUpdateBtn();
+  toast("Совместный режим выключен");
+}
+
+async function sbPush(key, value){
+  if(!sbActive || !sb) return;
+  const args = { p_warehouse: sbWarehouse, p_report_date: sbDate };
+  if(value === null || value === undefined){ args.p_fact = {}; args.p_remove = [key]; }
+  else { args.p_fact = {}; args.p_fact[key] = value; }
+  const { error } = await sb.rpc("update_fact", args);
+  if(error){ sbSetStatus("Ошибка записи: " + error.message, false); }
+}
+
 let toastTimer = null;
 function toast(msg){
   const el = document.getElementById("toast");
@@ -615,8 +697,8 @@ function stepFact(key, inp, d){
   const cur = invState.fact[key] !== undefined ? invState.fact[key] : 0;
   let next = Math.round((cur + d) * 1000) / 1000;
   if(next < 0) next = 0;
-  if(next === 0){ delete invState.fact[key]; inp.value = ""; }
-  else { invState.fact[key] = next; inp.value = next; }
+  if(next === 0){ delete invState.fact[key]; inp.value = ""; sbPush(key, null); }
+  else { invState.fact[key] = next; inp.value = next; sbPush(key, next); }
   updateDiffByKey(key); updateInvStats(); invSaveState();
 }
 
@@ -1191,6 +1273,7 @@ function initInv(){
   updateInvStats();
 
   document.getElementById("invRest").addEventListener("change", ()=>{
+    if(sbActive) sbStop();
     invRest = document.getElementById("invRest").value;
     INV_GROUPS = invLoadDict();
     invState = invLoadState(invRest);
@@ -1198,6 +1281,7 @@ function initInv(){
     renderInvGroups(); updateInvStats();
   });
   document.getElementById("btnGrpAdd").addEventListener("click", addGroup);
+  document.getElementById("btnSb").addEventListener("click", sbToggle);
   document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
@@ -1209,7 +1293,7 @@ function initInv(){
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
   document.getElementById("jsonFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) importJsonFile(f); e.target.value = ""; });
   document.getElementById("invName").addEventListener("input", (e)=>{ invState.name = e.target.value.trim(); invSaveState(); });
-  document.getElementById("invDate").addEventListener("change", (e)=>{ invState.date = e.target.value; invSaveState(); });
+  document.getElementById("invDate").addEventListener("change", (e)=>{ if(sbActive) sbStop(); invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
