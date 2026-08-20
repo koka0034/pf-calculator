@@ -629,8 +629,7 @@ async function sbToggle(){
       if(!row) return;
       if(row.warehouse !== sbWarehouse) return;
       if((row.report_date || "") !== sbDate) return;
-      invState.fact = Object.assign({}, row.fact || {});
-      renderInvGroups(); updateInvStats();
+      sbApplyServerFact(row.fact || {});
     })
     .subscribe((st)=>{
       if(st === "SUBSCRIBED"){ sbSetStatus("Синхронизация активна · " + sbWarehouse + " · " + sbDate, true); }
@@ -711,8 +710,21 @@ function focusNextFact(cur){
   const pane = cur.closest(".pane") || document;
   const all = Array.from(pane.querySelectorAll("input.factinp"));
   const i = all.indexOf(cur);
-  if(i >= 0 && i + 1 < all.length){ const nx = all[i+1]; nx.focus(); try{ nx.select(); }catch(e){} }
-  else { cur.blur(); }
+  if(i >= 0 && i + 1 < all.length){
+    const nx = all[i+1];
+    const det = nx.closest("details"); if(det) det.open = true;
+    nx.focus(); try{ nx.select(); }catch(e){}
+  } else { cur.blur(); }
+}
+
+function sbApplyServerFact(fact){
+  invState.fact = Object.assign({}, fact || {});
+  document.querySelectorAll("input.factinp").forEach(inp=>{
+    const v = invState.fact[inp.dataset.key];
+    inp.value = (v === undefined || v === null) ? "" : String(v);
+  });
+  for(const k in diffCells) updateDiffByKey(k);
+  updateInvStats();
 }
 
 function renderGroupsInto(boxId, showDiff){
@@ -752,7 +764,7 @@ function renderGroupsInto(boxId, showDiff){
       tdName.append(nmSpan, unSpan);
 
       const tdFact = document.createElement("td");
-      const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next";
+      const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next"; f.dataset.key = key;
       f.value = invState.fact[key] !== undefined ? invState.fact[key] : "";
       f.addEventListener("input", ()=>{
         if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
