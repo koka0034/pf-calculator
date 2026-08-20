@@ -178,6 +178,21 @@
     #printArea td.num{text-align:right}
     #printArea .pempty{color:#999}
   }
+  /* --- история --- */
+  .hrest{margin:14px 0}
+  .hrest-t{font-weight:700;font-size:15px;margin:0 0 6px}
+  .hrec{display:flex;justify-content:space-between;width:100%;text-align:left;
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
+    color:var(--txt);padding:9px 12px;margin:4px 0;font-size:14px;cursor:pointer}
+  .hrec:hover{border-color:var(--acc)}
+  .hrec-d{font-weight:600}
+  .hrec-n{color:var(--muted)}
+  .hgroup{font-weight:600;margin:12px 0 4px}
+  .htbl{width:100%;border-collapse:collapse;margin:0 0 10px;font-size:13px}
+  .htbl th,.htbl td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+  .htbl td.num,.htbl th.num{text-align:right}
+  .a-btn{display:inline-block;background:var(--card);border:1px solid var(--line);
+    border-radius:9px;color:var(--txt);padding:9px 14px;font-size:14px;text-decoration:none;cursor:pointer}
 </style>
 </head>
 <body>
@@ -190,6 +205,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="calc">Калькулятор ПФ</button>
     <button class="tab" data-tab="inv">Инвентаризация</button>
+    <button class="tab" data-tab="hist">История</button>
   </div>
 
   <section id="tab-calc" class="pane">
@@ -273,6 +289,12 @@
     <h2>Расхождения (факт − расчёт)</h2>
     <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
     <div class="panel"><div id="invDiffList"></div></div>
+  </section>
+
+  <section id="tab-hist" class="pane hidden">
+    <div class="sub" id="histInfo">Загрузка истории…</div>
+    <div class="bar"><button id="btnHistRefresh">Обновить</button></div>
+    <div id="histList"></div>
   </section>
 
   <footer>
@@ -1040,12 +1062,20 @@ function handleBlankFile(file){
 }
 function exportForBlank(){
   const facts = [];
-  INV_GROUPS.forEach(g=>g.goods.forEach(gd=>{
-    const k = goodKey(g.g, gd.n);
-    if(invState.fact[k] !== undefined) facts.push({name:gd.n, u:gd.u, qty:invState.fact[k]});
-  }));
+  const groups = [];
+  INV_GROUPS.forEach(g=>{
+    const gGoods = [];
+    g.goods.forEach(gd=>{
+      const k = goodKey(g.g, gd.n);
+      if(invState.fact[k] !== undefined){
+        facts.push({name:gd.n, u:gd.u, qty:invState.fact[k]});
+        gGoods.push({n:gd.n, u:gd.u, qty:invState.fact[k]});
+      }
+    });
+    if(gGoods.length) groups.push({g:g.g, goods:gGoods});
+  });
   if(!facts.length){ toast("Нет фактических данных для выгрузки"); return; }
-  const data = { rest: invRest || "", date: localToday(), facts: facts };
+  const data = { rest: invRest || "", date: localToday(), groups: groups, facts: facts };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -1055,10 +1085,87 @@ function exportForBlank(){
   toast("Выгружено " + facts.length + " поз. — отправь файл и бланк ассистенту");
 }
 
+/* ===================== История ===================== */
+const HIST_RAW = "https://raw.githubusercontent.com/koka0034/pf-calculator/main/";
+let histCache = [];
+
+function histInfo(msg){ const el = document.getElementById("histInfo"); if(el) el.textContent = msg; }
+
+function loadHistory(){
+  histInfo("Загрузка истории…");
+  fetch(HIST_RAW + "data/index.json", {cache:"no-store"})
+    .then(r=>{ if(!r.ok) throw new Error("no index"); return r.json(); })
+    .then(j=>{ histCache = (j && j.records) || []; renderHistory(histCache); })
+    .catch(()=>{ histCache = []; renderHistory([]); histInfo("История пока пуста — отправьте выгруженный JSON ассистенту, и он сохранит его в облако."); });
+}
+
+function renderHistory(recs){
+  const box = document.getElementById("histList");
+  if(!recs.length){
+    histInfo("История пока пуста — отправьте выгруженный JSON ассистенту, и он сохранит его в облако.");
+    box.innerHTML = "";
+    return;
+  }
+  const byRest = {};
+  recs.forEach(r=>{ const k = r.rest || "—"; (byRest[k] = byRest[k] || []).push(r); });
+  Object.keys(byRest).forEach(k=>byRest[k].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))));
+  histInfo("Записей: " + recs.length + " · ресторанов: " + Object.keys(byRest).length);
+  let h = "";
+  Object.keys(byRest).sort().forEach(rest=>{
+    h += '<div class="hrest"><div class="hrest-t">' + esc(rest) + '</div>';
+    byRest[rest].forEach(r=>{
+      h += '<button class="hrec" data-file="' + esc(r.file || "") + '">' +
+           '<span class="hrec-d">' + esc(r.date || "") + '</span>' +
+           '<span class="hrec-n">' + (r.items || (r.facts || []).length || "—") + ' поз.</span>' +
+           '</button>';
+    });
+    h += '</div>';
+  });
+  box.innerHTML = h;
+  box.querySelectorAll(".hrec").forEach(b=>b.addEventListener("click", ()=>openHistRecord(b.dataset.file)));
+}
+
+function openHistRecord(file){
+  fetch(HIST_RAW + encodeURI(file), {cache:"no-store"})
+    .then(r=>{ if(!r.ok) throw new Error("file"); return r.json(); })
+    .then(showHistDetail)
+    .catch(()=>toast("Не удалось открыть запись"));
+}
+
+function showHistDetail(d){
+  const box = document.getElementById("histList");
+  let rows = "";
+  if(d.groups && d.groups.length){
+    d.groups.forEach(g=>{
+      rows += '<div class="hgroup">' + esc(g.g || "") + '</div>';
+      rows += '<table class="htbl"><tr><th>Товар</th><th>Ед.</th><th class="num">Факт</th></tr>';
+      (g.goods || []).forEach(gd=>{
+        rows += '<tr><td>' + esc(gd.n) + '</td><td>' + esc(gd.u || "") + '</td><td class="num">' + fmt(gd.qty) + '</td></tr>';
+      });
+      rows += '</table>';
+    });
+  } else if(d.facts && d.facts.length){
+    rows += '<table class="htbl"><tr><th>Товар</th><th>Ед.</th><th class="num">Факт</th></tr>';
+    d.facts.forEach(f=>{
+      rows += '<tr><td>' + esc(f.name) + '</td><td>' + esc(f.u || "") + '</td><td class="num">' + fmt(f.qty) + '</td></tr>';
+    });
+    rows += '</table>';
+  }
+  const n = (d.facts && d.facts.length) || (d.groups ? d.groups.reduce((s,g)=>s+(g.goods||[]).length,0) : 0);
+  const dl = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(d));
+  box.innerHTML =
+    '<div class="bar"><button id="btnHistBack">← Назад</button></div>' +
+    '<div class="sub">' + esc(d.rest || "") + ' · ' + esc(d.date || "") + ' · ' + n + ' поз.</div>' +
+    rows +
+    '<div class="bar"><a class="a-btn" download="' + esc((d.rest || "бар") + "-" + (d.date || "") + ".json") + '" href="' + dl + '">Скачать JSON</a></div>';
+  document.getElementById("btnHistBack").addEventListener("click", ()=>renderHistory(histCache));
+}
+
 function switchTab(tab){
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active", b.dataset.tab === tab));
   document.getElementById("tab-calc").classList.toggle("hidden", tab !== "calc");
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
+  document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
 }
 
 function initInv(){
@@ -1119,6 +1226,9 @@ renderHist();
 recompute();
 
 initInv();
+
+document.getElementById("btnHistRefresh").addEventListener("click", loadHistory);
+loadHistory();
 
 const btnTop = document.getElementById("btnTop");
 window.addEventListener("scroll", ()=>{ btnTop.classList.toggle("show", window.scrollY > 400); });
