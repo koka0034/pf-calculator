@@ -284,7 +284,7 @@
 
   <section id="tab-pf" class="pane hidden">
     <div class="stats">
-      <div class="stat"><b id="stPf">0</b><span>настоек с остатком</span></div>
+      <div class="stat"><b id="stPf">0</b><span>ПФ с остатком</span></div>
       <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
       <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
     </div>
@@ -312,7 +312,7 @@
     <div class="panel"><div id="result"></div></div>
 
     <details>
-      <summary>Раскладка по настойкам</summary>
+      <summary>Раскладка по ПФ</summary>
       <div class="detail" id="detail"></div>
     </details>
   </section>
@@ -371,21 +371,21 @@ function setQ(i, q){
 }
 function getInputs(){
   const out = {};
-  RECIPES.forEach((r,i)=>{ const q = getQ(i); if(q > 0) out[r.n] = q; });
+  ALL_PF.forEach((r,i)=>{ const q = getQ(i); if(q > 0) out[r.n] = q; });
   return out;
 }
 function setAllInputs(pf){
-  RECIPES.forEach((r,i)=>{ setQ(i, pf[r.n] || 0); });
+  ALL_PF.forEach((r,i)=>{ setQ(i, pf[r.n] || 0); });
 }
 
 function computeTotals(v){
   const totals = {};
   const byPf = {};
   let vol = 0, cnt = 0;
-  RECIPES.forEach((r,i)=>{
+  ALL_PF.forEach((r,i)=>{
     const q = v[r.n] || 0;
     if(q <= 0) return;
-    cnt++; vol += q;
+    cnt++; if(r.u === "л") vol += q;
     byPf[r.n] = [];
     r.items.forEach(it=>{
       const t=it[0], u=it[1], norm=it[2];
@@ -414,7 +414,7 @@ function recompute(){
   document.getElementById("stTov").textContent = rows.length;
   const box = document.getElementById("result");
   if(!rows.length){
-    box.innerHTML = '<div class="empty">Введите объём хотя бы одной настойки</div>';
+    box.innerHTML = '<div class="empty">Введите остаток хотя бы одного ПФ</div>';
   }else{
     let h = '<table><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
     rows.forEach(([t,o])=>{
@@ -479,7 +479,7 @@ function renderHist(){
   hist.forEach(r=>{
     h += '<div class="hist">'
        +   '<div class="hd">'+esc(r.date)+'</div>'
-       +   '<div class="hs">настоек: '+r.n_pf+' · товаров: '+r.n_tov+' · '+fmt(r.vol)+' л</div>'
+       +   '<div class="hs">ПФ: '+r.n_pf+' · товаров: '+r.n_tov+' · '+fmt(r.vol)+' л</div>'
        +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
        +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
        + '</div>';
@@ -495,13 +495,13 @@ function doPrint(){
   let h = '<h1>Разборка ПФ → товары</h1>';
   h += '<div class="pmeta">Дата подсчёта: '+esc(date)+' · сформировано: '+esc(localToday())+'</div>';
   if(!c.cnt){
-    h += '<p class="pempty">Нет данных — введите объёмы настоек.</p>';
+    h += '<p class="pempty">Нет данных — введите остатки ПФ.</p>';
   }else{
-    h += '<h2>Настойки (ПФ) — '+c.cnt+' шт · '+fmt(c.vol)+' л</h2>';
-    h += '<table><tr><th>Настойка</th><th>Объём, л</th></tr>';
+    h += '<h2>ПФ — '+c.cnt+' шт · '+fmt(c.vol)+' л</h2>';
+    h += '<table><tr><th>ПФ</th><th>Кол-во</th><th>Ед.</th></tr>';
     const pfSorted = Object.entries(v).sort((a,b)=>b[1]-a[1]);
     pfSorted.forEach(([n,q])=>{
-      h += '<tr><td>'+esc(n)+'</td><td class="num">'+fmt(q)+'</td></tr>';
+      h += '<tr><td>'+esc(n)+'</td><td class="num">'+fmt(q)+'</td><td>'+esc((ALL_PF.find(x=>x.n===n)||{u:""}).u)+'</td></tr>';
     });
     h += '</table>';
     h += '<h2>Итог по товарам</h2>';
@@ -516,67 +516,43 @@ function doPrint(){
 }
 
 function resetAll(){
-  RECIPES.forEach((r,i)=>setQ(i, 0));
+  ALL_PF.forEach((r,i)=>setQ(i, 0));
   recompute();
 }
 
-const OTHER_PF = [{"n":"Сироп Лемонграсс","out":"400 мл","items":[["Лемонграсс (лимонная трава)","кг",0.035],["Сахар-песок Aro","кг",0.3]]},{"n":"Лаймовый суперджус","out":"430 мл","items":[["Лайм свежий","кг",0.1875],["Кислота лимонная","кг",0.01],["Яблочная кислота","кг",0.004]]},{"n":"Малиновая сырная пенка","out":"445 гр","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.125],["Сливки растительные CREAMART 20%","л",0.27],["Сироп малина ODK","л",0.02],["Гарниш Малина WTS?!","кг",0.01],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.0025],["Сахар-песок Aro","кг",0.016667],["Свекла сушеная натуральная (порошок)","кг",0.002]]},{"n":"Грильяж","out":"200 гр","items":[["Сахар-песок Aro","кг",0.2],["Орех Грецкий","кг",0.05]]},{"n":"Чай каркаде (гибискус)","out":"950 мл","items":[["Каркаде напиток чайный","кг",0.02]]},{"n":"Крем тирамису","out":"800 гр","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.25],["Сливки растительные CREAMART 20%","л",0.54],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.0025],["Сахар-песок Aro","кг",0.016667]]},{"n":"Чай липа","out":"1000 мл","items":[["Мед цветочный натуральный ГОСТ","кг",0.04],["Липа сушеная","кг",0.025]]},{"n":"Чай жасмин","out":"1000 мл","items":[["ЧАЙ пакет жасмин Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Ананасовая пена","out":"450 мл","items":[["Нектар ананас-яблоко 1л","л",0.4],["Пюре маракуйя ФК","л",0.05],["Ксантановая камедь","кг",0.004],["Альбумин","кг",0.003],["Баллончики д/сифона д/сливок","шт",1]]},{"n":"Ванильный сахар","out":"120 гр","items":[["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.015],["Сахар-песок Aro","кг",0.1]]},{"n":"Морс 2,5 л","out":"2,5 л","items":[["Морс Малиновый ФК","л",1]]},{"n":"Чай бергамот (эрл грей)","out":"1000 мл","items":[["ЧАЙ пакет эрл грей Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Сахарный сироп","out":"200 мл","items":[["Сахар-песок Aro","кг",0.15]]},{"n":"Взбитые сливки белые","out":"230 гр","items":[["Сливки растительные CREAMART 20%","л",0.25],["Баллончики д/сифона д/сливок","шт",1]]}];
+const OTHER_PF = [{"n":"Сироп Лемонграсс","u":"л","items":[["Лемонграсс (лимонная трава)","кг",0.0875],["Сахар-песок Aro","кг",0.75]]},{"n":"Лаймовый суперджус","u":"л","items":[["Лайм свежий","кг",0.436047],["Кислота лимонная","кг",0.023256],["Яблочная кислота","кг",0.009302]]},{"n":"Малиновая сырная пенка","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.280899],["Сливки растительные CREAMART 20%","л",0.606742],["Сироп малина ODK","л",0.044944],["Гарниш Малина WTS?!","кг",0.022472],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.005618],["Сахар-песок Aro","кг",0.037454],["Свекла сушеная натуральная (порошок)","кг",0.004494]]},{"n":"Грильяж","u":"кг","items":[["Сахар-песок Aro","кг",1],["Орех Грецкий","кг",0.25]]},{"n":"Чай каркаде (гибискус)","u":"л","items":[["Каркаде напиток чайный","кг",0.021053]]},{"n":"Крем тирамису","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.3125],["Сливки растительные CREAMART 20%","л",0.675],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.003125],["Сахар-песок Aro","кг",0.020834]]},{"n":"Чай липа","u":"л","items":[["Мед цветочный натуральный ГОСТ","кг",0.04],["Липа сушеная","кг",0.025]]},{"n":"Чай жасмин","u":"л","items":[["ЧАЙ пакет жасмин Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Ананасовая пена","u":"л","items":[["Нектар ананас-яблоко 1л","л",0.888889],["Пюре маракуйя ФК","л",0.111111],["Ксантановая камедь","кг",0.008889],["Альбумин","кг",0.006667],["Баллончики д/сифона д/сливок","шт",2.222222]]},{"n":"Ванильный сахар","u":"кг","items":[["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.125],["Сахар-песок Aro","кг",0.833333]]},{"n":"Морс 2,5 л","u":"л","items":[["Морс Малиновый ФК","л",0.4]]},{"n":"Чай бергамот (эрл грей)","u":"л","items":[["ЧАЙ пакет эрл грей Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Сахарный сироп","u":"л","items":[["Сахар-песок Aro","кг",0.75]]},{"n":"Взбитые сливки белые","u":"кг","items":[["Сливки растительные CREAMART 20%","л",1.086957],["Баллончики д/сифона д/сливок","шт",4.347826]]}];
 
-function renderOtherPf(){
-  const box = document.getElementById("otherPfList");
-  if(!box) return;
-  box.innerHTML = "";
-  OTHER_PF.forEach(pf=>{
-    const det = document.createElement("details");
-    det.className = "igrp";
-    const sum = document.createElement("summary");
-    const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
-    const nm = document.createElement("span"); nm.className="gnm"; nm.textContent = pf.n;
-    const out = document.createElement("span"); out.className="gcnt"; out.textContent = "выход " + pf.out;
-    sum.append(caret, nm, out);
-    det.appendChild(sum);
-    const body = document.createElement("div");
-    body.className = "gbody";
-    const tbl = document.createElement("table");
-    tbl.className = "goods";
-    tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
-    pf.items.forEach(it=>{
-      const tr = document.createElement("tr");
-      const tdN = document.createElement("td"); tdN.className = "gn"; tdN.textContent = it[0];
-      const tdQ = document.createElement("td"); tdQ.className = "num"; tdQ.textContent = fmt(it[2]);
-      const tdU = document.createElement("td"); tdU.className = "unit"; tdU.textContent = it[1];
-      tr.append(tdN, tdQ, tdU);
-      tbl.appendChild(tr);
-    });
-    body.appendChild(tbl);
-    det.appendChild(body);
-    box.appendChild(det);
-  });
+const ALL_PF = RECIPES.map(r => ({n: r.n, u: "л", items: r.items})).concat(OTHER_PF);
+
+function buildPfCard(r, i){
+  const card = document.createElement("div");
+  card.className = "pf";
+  const nm = document.createElement("div");
+  nm.className = "nm"; nm.textContent = r.n;
+  const st = document.createElement("div");
+  st.className = "stepper";
+  const bm = document.createElement("button");
+  bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
+  const inp = document.createElement("input");
+  inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
+  inp.dataset.i = i; inp.addEventListener("input", recompute);
+  const bp = document.createElement("button");
+  bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
+  st.append(bm, inp, bp);
+  const u = document.createElement("div");
+  u.className = "u"; u.textContent = r.u;
+  card.append(nm, st, u);
+  return card;
 }
 
 function build(){
   const list = document.getElementById("pfList");
-  RECIPES.forEach((r, i)=>{
-    const card = document.createElement("div");
-    card.className = "pf";
-    const nm = document.createElement("div");
-    nm.className = "nm"; nm.textContent = r.n;
-    const st = document.createElement("div");
-    st.className = "stepper";
-    const bm = document.createElement("button");
-    bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
-    const inp = document.createElement("input");
-    inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
-    inp.dataset.i = i; inp.addEventListener("input", recompute);
-    const bp = document.createElement("button");
-    bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
-    st.append(bm, inp, bp);
-    const u = document.createElement("div");
-    u.className = "u"; u.textContent = "л";
-    card.append(nm, st, u);
-    list.appendChild(card);
+  const olist = document.getElementById("otherPfList");
+  ALL_PF.forEach((r, i)=>{
+    const card = buildPfCard(r, i);
+    if(i < RECIPES.length) list.appendChild(card);
+    else olist.appendChild(card);
   });
-  renderOtherPf();
 }
 
 /* ===================== Инвентаризация ===================== */
@@ -1134,7 +1110,7 @@ function invExport(){
 function exportPf(){
   const c = computeTotals(getInputs());
   const goods = Object.entries(c.totals).map(([t,o])=>({name:t, u:o.u, qty:Math.round(o.v*1000)/1000})).sort((a,b)=>b.qty-a.qty);
-  if(!goods.length){ toast("Введите объём хотя бы одной настойки"); return; }
+  if(!goods.length){ toast("Введите остаток хотя бы одного ПФ"); return; }
   const data = { source:"pf", rest: invRest || "", date: invState.date || localToday(), goods: goods };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
