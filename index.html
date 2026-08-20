@@ -255,23 +255,24 @@
     </div>
 
     <h2>Список товаров для подсчёта</h2>
+    <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
     <div id="invGroups"></div>
+
+    <h2>Расхождения (факт − расчёт)</h2>
+    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
+    <div class="panel"><div id="invDiffList"></div></div>
   </section>
 
   <section id="tab-count" class="pane hidden">
     <input type="text" id="invName" class="invsearch" placeholder="Считал(а): имя">
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <div id="invCountGroups"></div>
-    <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
 
     <div class="bar">
       <button id="btnInvSave2" class="primary">Сохранить</button>
       <button id="btnInvReset">Очистить расчёт</button>
       <button id="btnInvFill" class="primary">Выгрузить данные</button>
     </div>
-    <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
-    <div class="panel"><div id="invDiffList"></div></div>
   </section>
 
   <section id="tab-pf" class="pane hidden">
@@ -695,10 +696,12 @@ function renderGroupsInto(boxId, showDiff){
     });
     body.appendChild(tbl);
 
-    const add = document.createElement("button");
-    add.className = "gadd"; add.type = "button"; add.textContent = "+ товар";
-    add.onclick = ()=>addGood(gi);
-    body.appendChild(add);
+    if(showDiff){
+      const add = document.createElement("button");
+      add.className = "gadd"; add.type = "button"; add.textContent = "+ товар";
+      add.onclick = ()=>addGood(gi);
+      body.appendChild(add);
+    }
 
     det.appendChild(body);
     box.appendChild(det);
