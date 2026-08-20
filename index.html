@@ -72,12 +72,14 @@
   .bar button{flex:1;min-width:110px;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .bar button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .sbwrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0}
   .sb{height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .sb.on{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
-  .sbstatus{font-size:12px;color:var(--muted)}
+  .sbstatus{font-size:12px;color:var(--muted);text-align:center}
   .sbstatus.ok{color:var(--acc2)}
   .sbstatus.err{color:var(--danger)}
+  .sbstatus:empty{display:none}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
      margin-top:8px;overflow:hidden}
   table{width:100%;border-collapse:collapse}
@@ -225,8 +227,8 @@
     </button>
     <div class="menu-list">
       <button class="menu-item active" data-tab="inv">Инвентаризация</button>
-      <button class="menu-item" data-tab="count">Подсчёт</button>
-      <button class="menu-item" data-tab="pf">ПФ</button>
+      <button class="menu-item" data-tab="count">Товары</button>
+      <button class="menu-item" data-tab="pf">Полуфабрикаты</button>
       <button class="menu-item" data-tab="hist">История</button>
     </div>
   </div>
@@ -243,8 +245,10 @@
       <select id="invRest"></select>
       <label for="invDate">Дата инвентаризации</label>
       <input type="date" id="invDate">
-      <button id="btnSb" class="sb">Включить совместный режим</button>
-      <span class="sbstatus" id="sbStatus"></span>
+      <div class="sbwrap">
+        <button id="btnSb" class="sb">Включить совместный режим</button>
+        <span class="sbstatus" id="sbStatus"></span>
+      </div>
       <div class="bar">
         <button id="btnInvSave" class="primary">Сохранить</button>
       </div>
@@ -268,7 +272,6 @@
   </section>
 
   <section id="tab-count" class="pane hidden">
-    <input type="text" id="invName" class="invsearch" placeholder="Считал(а): имя">
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <div id="invCountGroups"></div>
 
@@ -1290,7 +1293,6 @@ function switchTab(tab){
 }
 
 function syncInvSetup(){
-  document.getElementById("invName").value = invState.name || "";
   document.getElementById("invDate").value = invState.date || localToday();
 }
 
@@ -1324,7 +1326,6 @@ function initInv(){
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
   document.getElementById("jsonFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) importJsonFile(f); e.target.value = ""; });
-  document.getElementById("invName").addEventListener("input", (e)=>{ invState.name = e.target.value.trim(); invSaveState(); });
   document.getElementById("invDate").addEventListener("change", (e)=>{ if(sbActive) sbStop(); invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
