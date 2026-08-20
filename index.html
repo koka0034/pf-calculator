@@ -750,6 +750,13 @@ function renderGroupsInto(boxId, showDiff){
         if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
         updateDiffByKey(key); updateInvStats(); invSaveState();
       });
+      f.addEventListener("change", ()=>{
+        let n = toNum(f.value) || 0;
+        if(n < 0) n = 0;
+        if(n === 0){ delete invState.fact[key]; f.value = ""; sbPush(key, null); }
+        else { invState.fact[key] = n; f.value = n; sbPush(key, n); }
+        updateDiffByKey(key); updateInvStats(); invSaveState();
+      });
       const st = document.createElement("div"); st.className = "stepper fstep";
       const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
       bm.onclick = ()=>stepFact(key, f, -stepFor(gd.u));
