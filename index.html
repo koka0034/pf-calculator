@@ -26,11 +26,11 @@
   header{padding:10px 2px 12px}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);
-        border-radius:12px;padding:4px;margin:0 0 14px;position:sticky;top:8px;z-index:20}
-  .tab{flex:1;height:42px;border:none;border-radius:9px;background:transparent;
-       color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;padding:0 8px}
-  .tab.active{background:var(--acc);color:#171103}
+  .menu{display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--line);
+        border-radius:12px;padding:6px;margin:0 0 14px;position:sticky;top:8px;z-index:20}
+  .menu-item{width:100%;text-align:left;height:44px;border:none;border-radius:9px;background:transparent;
+       color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;padding:0 14px}
+  .menu-item.active{background:var(--acc);color:#171103}
   .pane.hidden{display:none}
   .stats{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
@@ -148,6 +148,8 @@
        box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
   .totop.show{display:flex}
   #blankFile{display:none}
+  #calcFile{display:none}
+  #jsonFile{display:none}
   #invImportBox{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
   #invImportFile{display:block;width:100%;margin-bottom:10px;font-size:13px;color:var(--muted)}
   #invImportBox textarea{width:100%;height:130px;border-radius:10px;border:1px solid var(--line);
@@ -202,13 +204,64 @@
     <div class="sub">Калькулятор ПФ → товары · инвентаризация и сверка остатков</div>
   </header>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="calc">Калькулятор ПФ</button>
-    <button class="tab" data-tab="inv">Инвентаризация</button>
-    <button class="tab" data-tab="hist">История</button>
-  </div>
+  <nav class="menu">
+    <button class="menu-item active" data-tab="inv">Инвентаризация</button>
+    <button class="menu-item" data-tab="count">Подсчёт</button>
+    <button class="menu-item" data-tab="pf">ПФ</button>
+    <button class="menu-item" data-tab="hist">История</button>
+  </nav>
 
-  <section id="tab-calc" class="pane">
+  <section id="tab-inv" class="pane">
+    <div class="inv-top">
+      <label for="invRest">Ресторан / склад</label>
+      <select id="invRest"></select>
+      <div class="row">
+        <input type="text" id="invRestNew" placeholder="Новый ресторан">
+        <button id="btnRestAdd">Добавить</button>
+      </div>
+      <label for="invDate">Дата инвентаризации</label>
+      <input type="date" id="invDate">
+      <div class="bar">
+        <button id="btnInvSave" class="primary">Сохранить</button>
+      </div>
+      <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
+      <div class="bar">
+        <button id="btnInvImportCalc">Импорт отчёта остатков xlsx</button>
+        <button id="btnInvImport">Импорт подсчёта JSON</button>
+      </div>
+      <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
+      <input type="file" id="jsonFile" accept=".json" class="hidden">
+      <div class="sub" id="invImportRes"></div>
+    </div>
+  </section>
+
+  <section id="tab-count" class="pane hidden">
+    <div class="stats">
+      <div class="stat"><b id="invTotal">0</b><span>товаров</span></div>
+      <div class="stat"><b id="invCounted">0</b><span>посчитано</span></div>
+      <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
+    </div>
+
+    <input type="text" id="invName" class="invsearch" placeholder="Считал(а): имя">
+    <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
+    <div id="invGroups"></div>
+    <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
+
+    <div class="bar">
+      <button id="btnInvSave2" class="primary">Сохранить</button>
+      <button id="btnInvReset">Очистить расчёт</button>
+      <button id="btnInvFill" class="primary">Выгрузить данные</button>
+    </div>
+    <div class="bar">
+      <button id="btnInvExport">Экспорт JSON</button>
+    </div>
+
+    <h2>Расхождения (факт − расчёт)</h2>
+    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
+    <div class="panel"><div id="invDiffList"></div></div>
+  </section>
+
+  <section id="tab-pf" class="pane hidden">
     <div class="stats">
       <div class="stat"><b id="stPf">0</b><span>настоек с остатком</span></div>
       <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
@@ -225,6 +278,7 @@
     <div class="bar">
       <button id="btnReset">Сбросить</button>
       <button id="btnPrint">Печать отчёта</button>
+      <button id="btnPfExport" class="primary">Выгрузить товары из ПФ</button>
     </div>
 
     <h2>Сохранённые подсчёты</h2>
@@ -239,58 +293,6 @@
     </details>
   </section>
 
-  <section id="tab-inv" class="pane hidden">
-    <div class="inv-top">
-      <label for="invRest">Ресторан / склад</label>
-      <select id="invRest"></select>
-      <div class="row">
-        <input type="text" id="invRestNew" placeholder="Новый ресторан">
-        <button id="btnRestAdd">Добавить</button>
-      </div>
-      <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
-    </div>
-
-    <div class="stats">
-      <div class="stat"><b id="invTotal">0</b><span>товаров</span></div>
-      <div class="stat"><b id="invCounted">0</b><span>посчитано</span></div>
-      <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
-    </div>
-
-    <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
-    <div id="invGroups"></div>
-    <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
-
-    <div class="bar">
-      <button id="btnInvSave" class="primary">Сохранить</button>
-      <button id="btnInvReset">Очистить расчёт</button>
-      <button id="btnInvFill" class="primary">Выгрузить данные</button>
-    </div>
-    <div class="bar">
-      <button id="btnInvExport">Экспорт JSON</button>
-      <button id="btnInvImport">Импорт JSON</button>
-      <button id="btnInvImportCalc">Импорт отчёта (.xlsx)</button>
-    </div>
-
-    <div id="invImportBox" class="hidden">
-      <div class="sub" id="invImportTitle">Импорт</div>
-      <input type="file" id="invImportFile" accept=".xlsx,.xls">
-      <textarea id="invImportText" placeholder="…или вставьте текст: название + количество"></textarea>
-      <div class="row">
-        <select id="invImportTarget">
-          <option value="calc">Записать в «расчёт»</option>
-          <option value="fact">Записать в «факт»</option>
-        </select>
-        <button id="btnInvImportDo" class="primary">Применить</button>
-        <button id="btnInvImportCancel">Отмена</button>
-      </div>
-      <div id="invImportRes"></div>
-    </div>
-
-    <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
-    <div class="panel"><div id="invDiffList"></div></div>
-  </section>
-
   <section id="tab-hist" class="pane hidden">
     <div class="sub" id="histInfo">Загрузка истории…</div>
     <div class="bar"><button id="btnHistRefresh">Обновить</button></div>
@@ -298,9 +300,9 @@
   </section>
 
   <footer>
-    Калькулятор: вода и цедра из рецептов исключены · банан ×1,778 и ананас ×1,688 (брутто).<br>
-    Инвентаризация: фактический остаток вводят по группам, сверка с расчётом из отчёта «остатки на складах».<br>
-    Работает офлайн. Данные хранятся в памяти браузера этого устройства.
+    ПФ: вода и цедра из рецептов исключены · банан ×1,778 и ананас ×1,688 (брутто).<br>
+    Подсчёт: фактический остаток вводят по группам, сверка с расчётом из отчёта «остатки на складах».<br>
+    История инвентаризаций хранится в облаке (GitHub); подсчёт работает офлайн.
   </footer>
 </div>
 
@@ -523,7 +525,7 @@ const DEFAULT_GROUPS = [{"g":"База данных","goods":[{"n":"Вишня �
 let INV_GROUPS = [];
 let invRestaurants = [];
 let invRest = "";
-let invState = { counters:{}, fact:{}, calc:{} };
+let invState = { counters:{}, fact:{}, calc:{}, name:"", date:"" };
 let invShowAll = false;
 let invImportMode = "tsv";
 let invSearch = "";
@@ -551,10 +553,10 @@ function invPersistRests(){ invSetJSON(INV_LS + "_rests", invRestaurants); }
 
 function invRestKey(r){ return INV_LS + "_data::" + r; }
 function invLoadState(r){
-  if(!r) return { counters:{}, fact:{}, calc:{} };
+  if(!r) return { counters:{}, fact:{}, calc:{}, name:"", date:"" };
   const d = invJSON(invRestKey(r), null);
-  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{} };
-  return { counters:{}, fact:{}, calc:{} };
+  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, name:d.name||"", date:d.date||"" };
+  return { counters:{}, fact:{}, calc:{}, name:"", date:"" };
 }
 function invSaveState(){
   if(!invRest) return;
@@ -771,41 +773,38 @@ function invReset(){
   updateInvStats();
 }
 
-function parseImportLine(line){
-  line = line.trim();
-  if(!line) return null;
-  let cols = line.split(/[\t;]/);
-  if(cols.length >= 2){
-    const name = cols[0].trim();
-    let qty = NaN;
-    for(let i=cols.length-1; i>=1; i--){ const v = toNum(cols[i]); if(!isNaN(v)){ qty = v; break; } }
-    if(name && !isNaN(qty)) return {name:name, qty:qty};
-    return null;
-  }
-  const m = line.match(/^(.*?)\s+([\d]+(?:[.,][\d]+)?)\s*$/);
-  if(m){ const qty = toNum(m[2]); if(!isNaN(qty)) return {name:m[1].trim(), qty:qty}; }
-  return null;
+function importJsonFile(file){
+  if(!file) return;
+  const res = document.getElementById("invImportRes");
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const obj = JSON.parse(e.target.result);
+      let msg = "";
+      if(obj && obj.source === "pf" && obj.goods && obj.goods.length){
+        const rows = obj.goods.map(g=>({name:g.name||g.n, qty:(g.qty!==undefined?g.qty:g.v)}));
+        const r = applyRows(rows, "calc");
+        msg = "Товары из ПФ → расчёт: обновлено " + r.existing + " · новых " + r.added;
+      } else if(obj && obj.facts && Array.isArray(obj.facts)){
+        const rows = obj.facts.map(f=>({name:f.name||f.n, qty:f.qty}));
+        const r = applyRows(rows, "fact");
+        msg = "Подсчёт → факт: обновлено " + r.existing + " · новых " + r.added;
+      } else {
+        if(obj.dict && Array.isArray(obj.dict)){ INV_GROUPS = obj.dict; invPersistDict(); }
+        const merge = (src, dst)=>{ if(src) for(const k in src){ if(dst[k]===undefined) dst[k]=src[k]; } };
+        merge(obj.fact, invState.fact);
+        merge(obj.calc, invState.calc);
+        invSaveState();
+        renderInvGroups(); updateInvStats();
+        msg = "Импортировано (полный снимок)";
+      }
+      res.textContent = msg;
+      toast(msg);
+    }catch(err){ res.textContent = "Ошибка JSON: " + err.message; }
+  };
+  reader.onerror = function(){ res.textContent = "Не удалось прочитать файл"; };
+  reader.readAsText(file);
 }
-
-function openImportCalc(){
-  invImportMode = "tsv";
-  document.getElementById("invImportTitle").textContent = "Импорт отчёта «остатки на складах» (.xlsx)";
-  document.getElementById("invImportTarget").style.display = "";
-  document.getElementById("invImportFile").style.display = "";
-  document.getElementById("invImportBox").classList.remove("hidden");
-  document.getElementById("invImportText").value = "";
-  document.getElementById("invImportRes").textContent = "";
-}
-function openImportJson(){
-  invImportMode = "json";
-  document.getElementById("invImportTitle").textContent = "Импорт JSON (бланк целиком)";
-  document.getElementById("invImportTarget").style.display = "none";
-  document.getElementById("invImportFile").style.display = "none";
-  document.getElementById("invImportBox").classList.remove("hidden");
-  document.getElementById("invImportText").value = "";
-  document.getElementById("invImportRes").textContent = "";
-}
-function closeImport(){ document.getElementById("invImportBox").classList.add("hidden"); }
 
 function applyRows(rows, target){
   const map = {};
@@ -832,30 +831,6 @@ function applyRows(rows, target){
   invSaveState();
   renderInvGroups(); updateInvStats();
   return {written:written, existing:existing, added:added};
-}
-
-function doImport(){
-  const res = document.getElementById("invImportRes");
-  if(invImportMode === "json"){
-    try{
-      const obj = JSON.parse(document.getElementById("invImportText").value);
-      if(obj.dict && Array.isArray(obj.dict)){ INV_GROUPS = obj.dict; invPersistDict(); }
-      if(obj.counters) Object.assign(invState.counters, obj.counters);
-      const merge = (src, dst)=>{ if(src) for(const k in src){ if(dst[k]===undefined) dst[k]=src[k]; } };
-      merge(obj.fact, invState.fact);
-      merge(obj.calc, invState.calc);
-      invSaveState();
-      renderInvGroups(); updateInvStats();
-      res.textContent = "Импортировано";
-      toast("Импортировано");
-    }catch(e){ res.textContent = "Ошибка JSON: " + e.message; }
-    return;
-  }
-  const target = document.getElementById("invImportTarget").value;
-  const rows = document.getElementById("invImportText").value.split(/\r?\n/).map(parseImportLine).filter(Boolean);
-  const r = applyRows(rows, target);
-  res.textContent = "Обновлено в списке: " + r.existing + " · новых: " + r.added;
-  toast("Импорт: " + r.existing + " поз. обновлено");
 }
 
 const NAME_KEYS = ["наименован","назван","товар","номенклатур","продукт","ингредиент","блюдо","позици"];
@@ -955,7 +930,6 @@ function parseWorkbook(wb){
 
 function handleFile(file){
   const res = document.getElementById("invImportRes");
-  const target = document.getElementById("invImportTarget").value;
   if(!file) return;
   const reader = new FileReader();
   reader.onload = function(e){
@@ -967,7 +941,7 @@ function handleFile(file){
         res.textContent = "Не удалось распознать таблицу. Убедитесь, что в файле есть столбцы «название» и «количество», или пришлите пример отчёта.";
         return;
       }
-      const r2 = applyRows(p.rows, target);
+      const r2 = applyRows(p.rows, "calc");
       res.textContent = "Файл «" + file.name + "»: обновлено в списке " + r2.existing + " · новых " + r2.added
         + (p.sample.length ? " · пример: " + p.sample.join(" · ") : "");
       toast("Импорт: обновлено " + r2.existing + " поз.");
@@ -980,7 +954,7 @@ function handleFile(file){
 }
 
 function invExport(){
-  const data = { app:"pf-calc", ver:1, dict:INV_GROUPS, rest:invRest, counters:invState.counters, fact:invState.fact, calc:invState.calc };
+  const data = { app:"pf-calc", ver:1, dict:INV_GROUPS, rest:invRest, date:invState.date || localToday(), name:invState.name || "", counters:invState.counters, fact:invState.fact, calc:invState.calc };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -988,6 +962,20 @@ function invExport(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(a.href);
   toast("Экспортировано");
+}
+
+function exportPf(){
+  const c = computeTotals(getInputs());
+  const goods = Object.entries(c.totals).map(([t,o])=>({name:t, u:o.u, qty:Math.round(o.v*1000)/1000})).sort((a,b)=>b.qty-a.qty);
+  if(!goods.length){ toast("Введите объём хотя бы одной настойки"); return; }
+  const data = { source:"pf", rest: invRest || "", date: invState.date || localToday(), goods: goods };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tovary-iz-pf-" + (invState.date || localToday()) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+  toast("Выгружено " + goods.length + " товаров из ПФ");
 }
 
 function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
@@ -1075,7 +1063,7 @@ function exportForBlank(){
     if(gGoods.length) groups.push({g:g.g, goods:gGoods});
   });
   if(!facts.length){ toast("Нет фактических данных для выгрузки"); return; }
-  const data = { rest: invRest || "", date: localToday(), groups: groups, facts: facts };
+  const data = { rest: invRest || "", date: invState.date || localToday(), name: invState.name || "", groups: groups, facts: facts };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -1162,10 +1150,16 @@ function showHistDetail(d){
 }
 
 function switchTab(tab){
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active", b.dataset.tab === tab));
-  document.getElementById("tab-calc").classList.toggle("hidden", tab !== "calc");
+  document.querySelectorAll(".menu-item").forEach(b=>b.classList.toggle("active", b.dataset.tab === tab));
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
+  document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
+  document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
+}
+
+function syncInvSetup(){
+  document.getElementById("invName").value = invState.name || "";
+  document.getElementById("invDate").value = invState.date || localToday();
 }
 
 function initInv(){
@@ -1177,28 +1171,32 @@ function initInv(){
   }
   renderRestSelect();
   invState = invLoadState(invRest);
+  syncInvSetup();
   renderInvGroups();
   updateInvStats();
 
   document.getElementById("invRest").addEventListener("change", ()=>{
     invRest = document.getElementById("invRest").value;
     invState = invLoadState(invRest);
+    syncInvSetup();
     renderInvGroups(); updateInvStats();
   });
   document.getElementById("btnRestAdd").addEventListener("click", addRest);
   document.getElementById("btnGrpAdd").addEventListener("click", addGroup);
   document.getElementById("btnInvSave").addEventListener("click", invSave);
+  document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
   document.getElementById("btnInvFill").addEventListener("click", exportForBlank);
   document.getElementById("btnInvExport").addEventListener("click", invExport);
-  document.getElementById("btnInvImport").addEventListener("click", openImportJson);
-  document.getElementById("btnInvImportCalc").addEventListener("click", openImportCalc);
+  document.getElementById("btnInvImport").addEventListener("click", ()=>{ document.getElementById("jsonFile").click(); });
+  document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
+  document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
+  document.getElementById("jsonFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) importJsonFile(f); e.target.value = ""; });
+  document.getElementById("invName").addEventListener("input", (e)=>{ invState.name = e.target.value.trim(); invSaveState(); });
+  document.getElementById("invDate").addEventListener("change", (e)=>{ invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
-  document.getElementById("btnInvImportDo").addEventListener("click", doImport);
-  document.getElementById("btnInvImportCancel").addEventListener("click", closeImport);
-  document.getElementById("invImportFile").addEventListener("change", (e)=>{ handleFile(e.target.files && e.target.files[0]); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
     document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: только расхождения" : "Показать: все";
@@ -1206,11 +1204,12 @@ function initInv(){
   });
 }
 
-document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
+document.querySelectorAll(".menu-item").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
 
 /* ---- инициализация калькулятора ---- */
 document.getElementById("btnReset").addEventListener("click", resetAll);
 document.getElementById("btnPrint").addEventListener("click", doPrint);
+document.getElementById("btnPfExport").addEventListener("click", exportPf);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
 document.getElementById("history").addEventListener("click", function(e){
   const b = e.target.closest("button");
