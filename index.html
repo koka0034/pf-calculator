@@ -707,6 +707,14 @@ function renderInvGroups(){
   renderGroupsInto("invCountGroups", false);
 }
 
+function focusNextFact(cur){
+  const pane = cur.closest(".pane") || document;
+  const all = Array.from(pane.querySelectorAll("input.factinp"));
+  const i = all.indexOf(cur);
+  if(i >= 0 && i + 1 < all.length){ const nx = all[i+1]; nx.focus(); try{ nx.select(); }catch(e){} }
+  else { cur.blur(); }
+}
+
 function renderGroupsInto(boxId, showDiff){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -744,7 +752,7 @@ function renderGroupsInto(boxId, showDiff){
       tdName.append(nmSpan, unSpan);
 
       const tdFact = document.createElement("td");
-      const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0";
+      const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next";
       f.value = invState.fact[key] !== undefined ? invState.fact[key] : "";
       f.addEventListener("input", ()=>{
         if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
@@ -756,6 +764,9 @@ function renderGroupsInto(boxId, showDiff){
         if(n === 0){ delete invState.fact[key]; f.value = ""; sbPush(key, null); }
         else { invState.fact[key] = n; f.value = n; sbPush(key, n); }
         updateDiffByKey(key); updateInvStats(); invSaveState();
+      });
+      f.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
       });
       const st = document.createElement("div"); st.className = "stepper fstep";
       const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
