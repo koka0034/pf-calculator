@@ -713,7 +713,9 @@ function focusNextFact(cur){
   if(i >= 0 && i + 1 < all.length){
     const nx = all[i+1];
     const det = nx.closest("details"); if(det) det.open = true;
-    nx.focus(); try{ nx.select(); }catch(e){}
+    nx.focus({ preventScroll: true });
+    try{ nx.select(); }catch(e){}
+    nx.scrollIntoView({ block: "center", behavior: "auto" });
   } else { cur.blur(); }
 }
 
