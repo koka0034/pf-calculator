@@ -26,8 +26,16 @@
   header{padding:10px 2px 12px}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .menu{display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--line);
-        border-radius:12px;padding:6px;margin:0 0 14px;position:sticky;top:8px;z-index:20}
+  .menu{position:relative;margin:0 0 14px}
+  .menu-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;height:48px;
+       background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--txt);
+       font-size:15px;font-weight:600;padding:0 14px;cursor:pointer}
+  .menu-caret{transition:transform .2s;color:var(--muted)}
+  .menu.open .menu-caret{transform:rotate(180deg)}
+  .menu-list{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;
+       background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;
+       box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .menu.open .menu-list{display:flex;flex-direction:column;gap:4px}
   .menu-item{width:100%;text-align:left;height:44px;border:none;border-radius:9px;background:transparent;
        color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;padding:0 14px}
   .menu-item.active{background:var(--acc);color:#171103}
@@ -204,14 +212,26 @@
     <div class="sub">Калькулятор ПФ → товары · инвентаризация и сверка остатков</div>
   </header>
 
-  <nav class="menu">
-    <button class="menu-item active" data-tab="inv">Инвентаризация</button>
-    <button class="menu-item" data-tab="count">Подсчёт</button>
-    <button class="menu-item" data-tab="pf">ПФ</button>
-    <button class="menu-item" data-tab="hist">История</button>
-  </nav>
+  <div class="menu" id="menuBox">
+    <button class="menu-toggle" id="menuToggle" type="button">
+      <span id="menuLabel">Инвентаризация</span>
+      <span class="menu-caret">▾</span>
+    </button>
+    <div class="menu-list">
+      <button class="menu-item active" data-tab="inv">Инвентаризация</button>
+      <button class="menu-item" data-tab="count">Подсчёт</button>
+      <button class="menu-item" data-tab="pf">ПФ</button>
+      <button class="menu-item" data-tab="hist">История</button>
+    </div>
+  </div>
 
   <section id="tab-inv" class="pane">
+    <div class="stats">
+      <div class="stat"><b id="invTotal">0</b><span>товаров</span></div>
+      <div class="stat"><b id="invCounted">0</b><span>посчитано</span></div>
+      <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
+    </div>
+
     <div class="inv-top">
       <label for="invRest">Ресторан / склад</label>
       <select id="invRest"></select>
@@ -236,12 +256,6 @@
   </section>
 
   <section id="tab-count" class="pane hidden">
-    <div class="stats">
-      <div class="stat"><b id="invTotal">0</b><span>товаров</span></div>
-      <div class="stat"><b id="invCounted">0</b><span>посчитано</span></div>
-      <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
-    </div>
-
     <input type="text" id="invName" class="invsearch" placeholder="Считал(а): имя">
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <div id="invGroups"></div>
@@ -252,10 +266,6 @@
       <button id="btnInvReset">Очистить расчёт</button>
       <button id="btnInvFill" class="primary">Выгрузить данные</button>
     </div>
-    <div class="bar">
-      <button id="btnInvExport">Экспорт JSON</button>
-    </div>
-
     <h2>Расхождения (факт − расчёт)</h2>
     <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
     <div class="panel"><div id="invDiffList"></div></div>
@@ -1150,11 +1160,16 @@ function showHistDetail(d){
 }
 
 function switchTab(tab){
-  document.querySelectorAll(".menu-item").forEach(b=>b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".menu-item").forEach(b=>{
+    const on = b.dataset.tab === tab;
+    b.classList.toggle("active", on);
+    if(on) document.getElementById("menuLabel").textContent = b.textContent;
+  });
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
   document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
+  document.getElementById("menuBox").classList.remove("open");
 }
 
 function syncInvSetup(){
@@ -1187,7 +1202,6 @@ function initInv(){
   document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
   document.getElementById("btnInvFill").addEventListener("click", exportForBlank);
-  document.getElementById("btnInvExport").addEventListener("click", invExport);
   document.getElementById("btnInvImport").addEventListener("click", ()=>{ document.getElementById("jsonFile").click(); });
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
@@ -1205,6 +1219,8 @@ function initInv(){
 }
 
 document.querySelectorAll(".menu-item").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
+document.getElementById("menuToggle").addEventListener("click", (e)=>{ e.stopPropagation(); document.getElementById("menuBox").classList.toggle("open"); });
+document.addEventListener("click", ()=>{ document.getElementById("menuBox").classList.remove("open"); });
 
 /* ---- инициализация калькулятора ---- */
 document.getElementById("btnReset").addEventListener("click", resetAll);
