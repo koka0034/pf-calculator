@@ -545,7 +545,7 @@ function toast(msg){
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove("show"), 2000);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 3000);
 }
 
 function renderRestSelect(){
