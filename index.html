@@ -667,6 +667,8 @@ function invSaveState(){
 const SB_URL = "https://gxrasjhpkjdmcndbknpi.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4cmFzamhwa2pkbWNuZGJrbnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMTk5NDIsImV4cCI6MjEwMjc5NTk0Mn0.96bodWC7HiY_2iTYQD8aR5Neo2q9LlwULNjQIrDeP9w";
 let sb = null, sbChannel = null, sbActive = false, sbWarehouse = "", sbDate = "";
+const sbClientId = "dev-" + Math.random().toString(36).slice(2, 10);
+let sbPending = null, sbFlushTimer = null, sbRetryTimer = null, sbOnline = 0, sbLastUpdate = null;
 
 function sbSetStatus(msg, ok){
   const el = document.getElementById("sbStatus");
@@ -684,34 +686,62 @@ function sbClient(){
   return sb;
 }
 function sbReportDate(){ return (document.getElementById("invDate").value || "").trim(); }
+function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || ""); }
+function sbRefreshStatus(){
+  if(!sbActive) return;
+  let m = "Синхронизация активна";
+  if(sbOnline > 0) m += " · " + sbOnline + " устр.";
+  if(sbLastUpdate) m += " · обновлено " + new Date(sbLastUpdate).toLocaleTimeString("ru-RU");
+  sbSetStatus(m, true);
+}
 
 async function sbToggle(){
   if(sbActive){ sbStop(); return; }
   const c = sbClient(); if(!c) return;
   const date = sbReportDate();
   if(!date){ toast("Сначала укажите дату инвентаризации"); return; }
+  const wk = sbWarehouseKey();
   sbSetStatus("Подключение…", true);
   const { data, error } = await c.from("inventory_reports")
-    .select("fact").eq("warehouse", invRest).eq("report_date", date).maybeSingle();
+    .select("fact").eq("warehouse", wk).eq("report_date", date).maybeSingle();
   if(error){ sbSetStatus("Ошибка: " + error.message, false); return; }
   const serverFact = (data && data.fact && typeof data.fact === "object") ? data.fact : {};
   const localFact = invState.fact || {};
-  if(Object.keys(serverFact).length){ invState.fact = serverFact; }
-  else if(Object.keys(localFact).length){
-    const { error: se } = await c.rpc("update_fact", { p_warehouse: invRest, p_report_date: date, p_fact: localFact });
+  if(Object.keys(serverFact).length && Object.keys(localFact).length){
+    const useServer = confirm("На сервере уже есть данные для этого ресторана, склада и даты.\n\nОК — загрузить данные с сервера (локальные будут заменены).\nОтмена — залить локальные данные на сервер (объединить).");
+    if(useServer){
+      invState.fact = serverFact;
+    } else {
+      const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localFact });
+      if(se){ sbSetStatus("Ошибка: " + se.message, false); return; }
+      invState.fact = Object.assign({}, serverFact, localFact);
+    }
+  } else if(Object.keys(serverFact).length){
+    invState.fact = serverFact;
+  } else if(Object.keys(localFact).length){
+    const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localFact });
     if(se){ sbSetStatus("Ошибка: " + se.message, false); return; }
   }
-  sbWarehouse = invRest; sbDate = date; sbActive = true;
-  sbChannel = c.channel("inv_" + invRest + "_" + Date.now())
-    .on("postgres_changes", { event:"*", schema:"public", table:"inventory_reports" }, (payload)=>{
+  sbWarehouse = wk; sbDate = date; sbActive = true; sbOnline = 0; sbLastUpdate = null;
+  sbChannel = c.channel("inv_" + encodeURIComponent(wk), { config: { presence: { key: sbClientId } } })
+    .on("presence", { event: "sync" }, ()=>{
+      try{ sbOnline = Object.keys(sbChannel.presenceState()).length; }catch(e){}
+      sbRefreshStatus();
+    })
+    .on("postgres_changes", { event:"*", schema:"public", table:"inventory_reports", filter:"report_date=eq." + date }, (payload)=>{
       const row = payload.new;
       if(!row) return;
       if(row.warehouse !== sbWarehouse) return;
       if((row.report_date || "") !== sbDate) return;
+      sbLastUpdate = Date.now();
       sbApplyServerFact(row.fact || {});
+      sbRefreshStatus();
     })
     .subscribe((st)=>{
-      if(st === "SUBSCRIBED"){ sbSetStatus("Синхронизация активна · " + sbWarehouse + " · " + sbDate, true); }
+      if(st === "SUBSCRIBED"){
+        try{ sbChannel.track({ online: true }); }catch(e){}
+        sbRefreshStatus();
+      }
       else if(st === "CHANNEL_ERROR" || st === "TIMED_OUT"){ sbSetStatus("Нет связи с сервером", false); }
     });
   sbUpdateBtn(); renderInvGroups(); updateInvStats();
@@ -721,18 +751,44 @@ async function sbToggle(){
 function sbStop(){
   if(sbChannel){ try{ sbChannel.unsubscribe(); }catch(e){} sbChannel = null; }
   sbActive = false;
+  sbPending = null;
+  clearTimeout(sbFlushTimer); clearTimeout(sbRetryTimer);
+  sbOnline = 0; sbLastUpdate = null;
   sbSetStatus("", false);
   sbUpdateBtn();
   toast("Совместный режим выключен");
 }
 
-async function sbPush(key, value){
+function sbPush(key, value){
   if(!sbActive || !sb) return;
-  const args = { p_warehouse: sbWarehouse, p_report_date: sbDate };
-  if(value === null || value === undefined){ args.p_fact = {}; args.p_remove = [key]; }
-  else { args.p_fact = {}; args.p_fact[key] = value; }
+  if(!sbPending) sbPending = {};
+  sbPending[key] = value;
+  clearTimeout(sbFlushTimer);
+  sbFlushTimer = setTimeout(sbFlush, 200);
+}
+async function sbFlush(){
+  if(!sbActive || !sb || !sbPending) return;
+  const keys = Object.keys(sbPending);
+  if(!keys.length){ sbPending = null; return; }
+  const pend = sbPending;
+  sbPending = null;
+  const fact = {}, remove = [];
+  for(const k in pend){
+    if(pend[k] === null || pend[k] === undefined) remove.push(k);
+    else fact[k] = pend[k];
+  }
+  const args = { p_warehouse: sbWarehouse, p_report_date: sbDate, p_fact: fact, p_remove: remove.length ? remove : null };
   const { error } = await sb.rpc("update_fact", args);
-  if(error){ sbSetStatus("Ошибка записи: " + error.message, false); }
+  if(error){
+    if(!sbPending) sbPending = {};
+    for(const k in pend){ if(!(k in sbPending)) sbPending[k] = pend[k]; }
+    sbSetStatus("Изменение ждёт связи…", false);
+    clearTimeout(sbRetryTimer);
+    sbRetryTimer = setTimeout(sbFlush, 3000);
+  } else {
+    sbRefreshStatus();
+    if(sbPending && Object.keys(sbPending).length) setTimeout(sbFlush, 200);
+  }
 }
 
 let toastTimer = null;
@@ -821,13 +877,26 @@ function focusNextFact(cur){
 }
 
 function sbApplyServerFact(fact){
-  invState.fact = Object.assign({}, fact || {});
+  const active = document.activeElement;
+  let activeKey = null, activeLocal = null;
+  if(active && active.matches && active.matches("input.factinp")){
+    activeKey = active.dataset.key;
+    activeLocal = (invState.fact[activeKey] !== undefined) ? invState.fact[activeKey] : null;
+  }
+  const next = Object.assign({}, fact || {});
+  if(activeKey !== null){
+    if(activeLocal === null) delete next[activeKey];
+    else next[activeKey] = activeLocal;
+  }
+  invState.fact = next;
   document.querySelectorAll("input.factinp").forEach(inp=>{
+    if(inp === active) return;
     const v = invState.fact[inp.dataset.key];
     inp.value = (v === undefined || v === null) ? "" : String(v);
   });
   for(const k in diffCells) updateDiffByKey(k);
   updateInvStats();
+  renderInvDiff();
 }
 
 function renderGroupsInto(boxId, showDiff){
@@ -1011,6 +1080,10 @@ function invReset(){
 
 function invClearFact(){
   if(!confirm("Сбросить все введённые остатки (факт и добавления из ПФ)?")) return;
+  if(sbActive && sb){
+    const keys = Object.keys(invState.fact);
+    sb.rpc("update_fact", { p_warehouse: sbWarehouse, p_report_date: sbDate, p_fact: {}, p_remove: keys.length ? keys : null }).catch(()=>{});
+  }
   invState.fact = {};
   invState.pfAdd = {};
   invSaveState();
@@ -1582,6 +1655,7 @@ function initInv(){
     renderInvGroups(); updateInvStats();
   });
   document.getElementById("invRestaurant").addEventListener("change", ()=>{
+    if(sbActive) sbStop();
     invRestaurant = document.getElementById("invRestaurant").value;
     localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   });
