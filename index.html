@@ -71,8 +71,9 @@
   .bar button.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
   .bar button.blue{background:#2f6fd0;color:#fff;border-color:#2f6fd0}
   .h2hl{text-align:center;background:var(--acc);color:#171103;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.6px;padding:10px 12px;border-radius:10px;margin:20px 2px 10px}
+  .h2big{text-align:center;color:var(--txt);font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.6px;margin:20px 2px 10px}
   .sbwrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0}
-  .sb{width:100%;height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
+  .sb{width:100%;height:44px;padding:0 14px;border-radius:12px;border:1px solid #ff8c00;
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .sb.on{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
   .sbstatus{font-size:12px;color:var(--muted);text-align:center}
@@ -89,11 +90,12 @@
   .diffwrap .bar{margin:0 14px 10px}
   .diffwrap .panel{margin:0 14px 14px;background:#eceef1;border-color:#c9ced6}
   .diffwrap .panel th{color:#4a5360}
-  .diffwrap .panel td{color:#1a1f26}
-  .diffwrap .panel td.num{color:#1a1f26}
-  .diffwrap .panel .diff.neg{color:#b02a37}
-  .diffwrap .panel .diff.pos{color:#1d7a4f}
-  .diffwrap .panel .diff.zero{color:#6a7280}
+  .diffwrap .panel td{color:#000}
+  .diffwrap .panel td.num{color:#000}
+  .diffwrap .panel td.diffc{text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+  .diffwrap .panel td.diffc.neg{color:#d32f2f}
+  .diffwrap .panel td.diffc.pos{color:#1b8a3a}
+  .diffwrap .panel td.diffc.zero{color:#6a7280}
   .diffwrap .panel .dg{color:#4a5360}
   .diffwrap .panel .unit{color:#6a7280}
   table{width:100%;border-collapse:collapse}
@@ -169,9 +171,9 @@
   .grpadd:hover{color:#5a9df0;border-color:#5a9df0}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
-  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
-       background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
-  .blankimp:hover{border-color:var(--acc);color:var(--acc)}
+  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid #2f6fd0;
+       background:#2f6fd0;color:#fff;font-weight:600;cursor:pointer;margin-top:8px}
+  .blankimp:hover{background:#2560b8;border-color:#2560b8;color:#fff}
   .totop{position:fixed;right:16px;bottom:18px;width:46px;height:46px;border-radius:50%;
        border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
@@ -207,7 +209,10 @@
        padding-bottom:3px;text-transform:none;color:#000}
     #printArea table{width:100%;border-collapse:collapse;margin-bottom:8px}
     #printArea th,#printArea td{border:1px solid #999;padding:4px 6px;text-align:left;font-size:11px}
-    #printArea td.num{text-align:right}
+    #printArea td.num{text-align:right;color:#000}
+    #printArea td.diffc{text-align:center;font-weight:700}
+    #printArea td.diffc.neg{color:#d32f2f}
+    #printArea td.diffc.pos{color:#1b8a3a}
     #printArea .pempty{color:#999}
   }
   /* --- история --- */
@@ -269,7 +274,7 @@
       <div class="sub" id="invImportRes"></div>
     </div>
 
-    <h2 class="h2hl">Список товаров для подсчёта</h2>
+    <h2 class="h2big">Список товаров для подсчёта</h2>
     <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
     <div id="invGroups"></div>
 
@@ -924,11 +929,11 @@ function renderInvDiff(){
   rows.forEach(r=>{
     const fStr = r.f === null ? "—" : fmt(r.f);
     const dStr = r.d === null ? "—" : fmtDiff(r.d);
-    const dCls = r.d === null ? "" : (r.d > 0.0005 ? "pos" : r.d < -0.0005 ? "neg" : "");
+    const dCls = r.d === null ? "" : (r.d > 0.0005 ? "pos" : r.d < -0.0005 ? "neg" : "zero");
     h += '<tr><td><span class="dg">'+esc(r.g)+'</span>'+esc(r.n)+' <span class="unit">'+esc(r.u)+'</span></td>'
        + '<td class="num">'+fStr+'</td>'
        + '<td class="num">'+fmt(r.c)+'</td>'
-       + '<td class="num '+dCls+'">'+dStr+'</td></tr>';
+       + '<td class="diffc '+dCls+'">'+dStr+'</td></tr>';
   });
   h += '</table>';
   box.innerHTML = h;
@@ -1030,10 +1035,11 @@ function printDiff(){
   } else {
     h += '<table><tr><th>Товар</th><th>Факт</th><th>Расчёт</th><th>±</th></tr>';
     rows.forEach(r=>{
+      const dCls = r.d > 0.0005 ? "pos" : r.d < -0.0005 ? "neg" : "zero";
       h += '<tr><td><span class="dg">'+esc(r.g)+'</span>'+esc(r.n)+' <span class="unit">'+esc(r.u)+'</span></td>'
          + '<td class="num">'+fmt(r.f)+'</td>'
          + '<td class="num">'+fmt(r.c)+'</td>'
-         + '<td class="num">'+fmtDiff(r.d)+'</td></tr>';
+         + '<td class="diffc '+dCls+'">'+fmtDiff(r.d)+'</td></tr>';
     });
     h += '</table>';
   }
