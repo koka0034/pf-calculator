@@ -330,7 +330,6 @@
     <div class="bar">
       <button id="btnReset" class="burgundy">Сбросить</button>
       <button id="btnPrint" class="blue">Печать отчёта</button>
-      <button id="btnPfExport" class="primary">Добавить ПФ в Товары</button>
     </div>
 
     <h2>Итог по товарам</h2>
@@ -366,7 +365,7 @@
       <p><b>3. Импорт отчёта.</b> Кнопка «Импорт отчёта остатков xlsx» подгружает остатки из крайнего правого столбца файла.</p>
       <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает все категории сразу.</p>
       <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
-      <p><b>6. Перенос в товары.</b> Кнопка «Добавить ПФ в Товары» переносит разложенные товары в список «Товары» и в столбец «из ПФ». Повторное нажатие обновляет значения, не задваивая.</p>
+      <p><b>6. Разборка ПФ.</b> Остатки настоек и других ПФ автоматически раскладываются в товары и появляются на «Главной» в столбце «из ПФ» — отдельно нажимать ничего не нужно.</p>
       <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. Кнопка «Печать расхождений» формирует печатный отчёт.</p>
       <p><b>8. Совместный режим.</b> Кнопка «Включить совместный режим» позволяет нескольким устройствам заполнять один отчёт одновременно (нужна связь).</p>
       <p><b>9. Сохранение и экспорт.</b> «Сохранить» на «Главной»/«Товарах» сохраняет подсчёт локально. «Экспорт подсчёта JSON» выгружает данные файлом.</p>
@@ -495,6 +494,25 @@ function recompute(){
     });
     dbox.innerHTML = h;
   }
+  if(updatePfAdd(c)){
+    renderInvGroups();
+    updateInvStats();
+    renderInvDiff();
+  }
+}
+
+function updatePfAdd(c){
+  const nameKey = {};
+  INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ nameKey[gd.n] = goodKey(g.g, gd.n); }); });
+  const pfAdd = {};
+  Object.entries(c.totals).forEach(([t,o])=>{
+    const key = nameKey[t];
+    if(key) pfAdd[key] = Math.round(o.v*1000)/1000;
+  });
+  const changed = JSON.stringify(pfAdd) !== JSON.stringify(invState.pfAdd || {});
+  invState.pfAdd = pfAdd;
+  if(changed) invSaveState();
+  return changed;
 }
 
 function getHist(){
@@ -1379,27 +1397,7 @@ function invExport(){
   toast("Экспортировано");
 }
 
-function addPfToGoods(){
-  const c = computeTotals(getInputs());
-  const goods = Object.entries(c.totals).map(([t,o])=>({name:t, u:o.u, qty:Math.round(o.v*1000)/1000})).sort((a,b)=>b.qty-a.qty);
-  if(!goods.length){ toast("Сначала введите остатки ПФ"); return; }
-  const nameKey = {};
-  INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ nameKey[gd.n] = goodKey(g.g, gd.n); }); });
-  const pfAdd = {};
-  let skipped = 0;
-  goods.forEach(o=>{
-    const key = nameKey[o.name];
-    if(key) pfAdd[key] = o.qty;
-    else skipped++;
-  });
-  invState.pfAdd = pfAdd;
-  invSaveState();
-  renderInvGroups();
-  updateInvStats();
-  let msg = "Добавлено из ПФ: " + Object.keys(pfAdd).length + " товаров";
-  if(skipped) msg += " · не в складе: " + skipped;
-  toast(msg);
-}
+
 
 function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
 function parseBlankWorkbook(wb){
@@ -1724,7 +1722,6 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=
 /* ---- инициализация калькулятора ---- */
 document.getElementById("btnReset").addEventListener("click", resetAll);
 document.getElementById("btnPrint").addEventListener("click", doPrint);
-document.getElementById("btnPfExport").addEventListener("click", addPfToGoods);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
 document.getElementById("history").addEventListener("click", function(e){
   const b = e.target.closest("button");
