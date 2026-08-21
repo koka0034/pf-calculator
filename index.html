@@ -84,6 +84,8 @@
   .diffwrap summary::-webkit-details-marker{display:none}
   .diffwrap summary .caret{color:var(--muted);transition:transform .15s;font-size:16px}
   .diffwrap[open] summary .caret{transform:rotate(90deg)}
+  .diffwrap:not([open]) summary{background:var(--acc);color:#171103}
+  .diffwrap:not([open]) summary .caret{color:#171103}
   .diffwrap .bar{margin:0 14px 10px}
   .diffwrap .panel{margin:0 14px 14px}
   table{width:100%;border-collapse:collapse}
@@ -247,13 +249,10 @@
         <button id="btnSb" class="sb">Включить совместный режим</button>
         <span class="sbstatus" id="sbStatus"></span>
       </div>
-      <div class="bar">
-        <button id="btnInvSave" class="primary">Сохранить</button>
-      </div>
       <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
       <div class="bar">
         <button id="btnInvImportCalc">Импорт отчёта остатков xlsx</button>
-        <button id="btnInvImport">Импорт подсчёта JSON</button>
+        <button id="btnInvImport">Экспорт подсчёта JSON</button>
       </div>
       <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
       <input type="file" id="jsonFile" accept=".json" class="hidden">
@@ -261,7 +260,7 @@
     </div>
 
     <h2>Список товаров для подсчёта</h2>
-    <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
+    <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
     <div id="invGroups"></div>
 
     <details class="diffwrap" id="invDiffWrap" open>
@@ -952,6 +951,35 @@ function invClearFact(){
   updateInvStats();
 }
 
+function toggleAllGroups(){
+  const dets = Array.from(document.querySelectorAll("details.igrp"));
+  if(!dets.length) return;
+  const anyOpen = dets.some(d => d.open);
+  dets.forEach(d => { d.open = !anyOpen; });
+  document.getElementById("btnGrpToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
+}
+
+function exportCalc(){
+  const rows = [];
+  INV_GROUPS.forEach(g=>{
+    g.goods.forEach(gd=>{
+      const key = goodKey(g.g, gd.n);
+      const f = invState.fact[key] || 0;
+      const p = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      if(f <= 0 && p <= 0) return;
+      rows.push({group:g.g, name:gd.n, unit:gd.u, fact:Math.round(f*1000)/1000, pf:Math.round(p*1000)/1000, total:Math.round((f+p)*1000)/1000});
+    });
+  });
+  const data = { source:"inventory", rest: invRest || "", date: invState.date || localToday(), goods: rows };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "podschyot-" + (invState.date || localToday()) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+  toast("Экспортировано " + rows.length + " позиций");
+}
+
 function printDiff(){
   const date = invState.date || localToday();
   const area = document.getElementById("printArea");
@@ -1405,14 +1433,13 @@ function initInv(){
     syncInvSetup();
     renderInvGroups(); updateInvStats();
   });
-  document.getElementById("btnGrpAdd").addEventListener("click", addGroup);
+  document.getElementById("btnGrpToggle").addEventListener("click", toggleAllGroups);
   document.getElementById("btnSb").addEventListener("click", sbToggle);
-  document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
 document.getElementById("btnInvClearFact").addEventListener("click", invClearFact);
-  document.getElementById("btnInvImport").addEventListener("click", ()=>{ document.getElementById("jsonFile").click(); });
+  document.getElementById("btnInvImport").addEventListener("click", exportCalc);
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
