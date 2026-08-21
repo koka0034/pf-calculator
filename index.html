@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Учёт бара">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
-<title>Учёт остатков</title>
+<title>Калькулятор ПФ Товары Инвентаризация и сверка остатков</title>
 <style>
   :root{
     --bg:#0e1116; --card:#171c24; --card2:#1c2230; --line:#262d3a;
@@ -25,6 +25,7 @@
   .wrap{max-width:680px;margin:0 auto;padding:16px 14px 120px}
   header{padding:10px 2px 12px;text-align:center}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
+  header h1{font-size:22px;margin:0;font-weight:800;letter-spacing:0;line-height:1.3;border:2px solid #2f6fd0;border-radius:14px;padding:12px 14px;display:inline-block;color:var(--txt);background:rgba(47,111,208,.10)}
   .sub{color:var(--muted);font-size:13px}
   .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
   .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
@@ -171,9 +172,9 @@
   .grpadd:hover{color:#5a9df0;border-color:#5a9df0}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
-  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid #2f6fd0;
-       background:#2f6fd0;color:#fff;font-weight:600;cursor:pointer;margin-top:8px}
-  .blankimp:hover{background:#2560b8;border-color:#2560b8;color:#fff}
+  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
+       background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
+  .blankimp:hover{border-color:var(--acc);color:var(--acc)}
   .totop{position:fixed;right:16px;bottom:18px;width:46px;height:46px;border-radius:50%;
        border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
@@ -235,8 +236,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Учёт остатков</h1>
-    <div class="sub">Калькулятор ПФ → товары · инвентаризация и сверка остатков</div>
+    <h1>Калькулятор ПФ Товары Инвентаризация и сверка остатков</h1>
   </header>
 
   <nav class="tabs" id="navTabs">
@@ -266,7 +266,7 @@
       </div>
       <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
       <div class="bar">
-        <button id="btnInvImportCalc" class="blue">Импорт отчёта остатков xlsx</button>
+        <button id="btnInvImportCalc">Импорт отчёта остатков xlsx</button>
         <button id="btnInvImport" class="blue">Экспорт подсчёта JSON</button>
       </div>
       <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
@@ -313,10 +313,10 @@
       <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
     </div>
 
-    <h2 class="h2hl">Остатки настоек (л)</h2>
+    <h2 class="h2big">Остатки настоек (л)</h2>
     <div id="pfList"></div>
 
-    <h2 class="h2hl">Другие ПФ</h2>
+    <h2 class="h2big">Другие ПФ</h2>
     <div id="otherPfList"></div>
 
     <div class="bar">
@@ -337,17 +337,21 @@
   <section id="tab-hist" class="pane hidden">
     <h2>Как пользоваться</h2>
     <div class="panel instr">
-      <p><b>1. ПФ.</b> Введи остатки настоек (л) и других ПФ (л/кг). Ниже сразу виден «Итог по товарам» — сколько базовых товаров в них заложено.</p>
-      <p><b>2. Добавить ПФ в Товары.</b> Кнопка «Добавить ПФ в Товары» переносит разложенные товары в список «Товары» и на «Главную» (столбец «из ПФ»). Повторное нажатие обновляет значения, не задваивая.</p>
-      <p><b>3. Главная.</b> Выбери склад и дату, импортируй отчёт остатков (.xlsx) или вводи факт вручную по группам. Расхождения «факт − расчёт» подсвечиваются автоматически.</p>
-      <p><b>4. Сохранение.</b> На «Главной» можно сохранить подсчёт ПФ и загрузить его позже. «Сохранить» в «Товарах» сохраняет данные инвентаризации.</p>
+      <p><b>1. Настройка.</b> На «Главной» выбери ресторан, склад (Бар/Кухня) и дату инвентаризации.</p>
+      <p><b>2. Импорт бланка.</b> Кнопка «Импорт бланка (Excel)» загружает структуру товаров по группам для подсчёта.</p>
+      <p><b>3. Импорт отчёта.</b> Кнопка «Импорт отчёта остатков xlsx» подгружает остатки из крайнего правого столбца файла.</p>
+      <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает все категории сразу.</p>
+      <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
+      <p><b>6. Перенос в товары.</b> Кнопка «Добавить ПФ в Товары» переносит разложенные товары в список «Товары» и в столбец «из ПФ». Повторное нажатие обновляет значения, не задваивая.</p>
+      <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. Кнопка «Печать расхождений» формирует печатный отчёт.</p>
+      <p><b>8. Совместный режим.</b> Кнопка «Включить совместный режим» позволяет нескольким устройствам заполнять один отчёт одновременно (нужна связь).</p>
+      <p><b>9. Сохранение и экспорт.</b> «Сохранить» на «Главной»/«Товарах» сохраняет подсчёт локально. «Экспорт подсчёта JSON» выгружает данные файлом.</p>
+      <p><b>10. Сброс.</b> Кнопки «Очистить расчёт данные» и «Сбросить введённые данные» очищают данные подсчёта.</p>
     </div>
   </section>
 
   <footer>
-    ПФ: вода и цедра из рецептов исключены · банан ×1,778 и ананас ×1,688 (брутто).<br>
-    Подсчёт: фактический остаток вводят по группам, сверка с расчётом из отчёта «остатки на складах».<br>
-    История инвентаризаций хранится в облаке (GitHub); подсчёт работает офлайн.
+    История инвентаризаций локально на вашем устройстве. Подсчёт работает офлайн. Связь нужна только для совместной работы. В благодарность славить, превозносить и возносить молитвы.
   </footer>
 </div>
 
