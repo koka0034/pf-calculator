@@ -26,7 +26,7 @@
   header{padding:10px 2px 12px;text-align:center}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
+  .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 14px}
   .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
        min-height:70px;border:1px solid var(--line);border-radius:16px;background:var(--card);
        color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
@@ -36,6 +36,12 @@
   .instr p:last-child{margin-bottom:0}
   .pfadd{color:var(--acc2);font-size:13px}
   .pane.hidden{display:none}
+  .rptbox{padding:14px}
+  .rptbox label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  .rptbox input[type=file]{width:100%;color:var(--txt);font-size:14px}
+  .rptbox .rpt-status{margin-top:12px;font-size:14px;color:var(--acc2)}
+  .rptbox .rpt-status.err{color:#f0706b}
+  .rptbox .rpt-detail{margin-top:6px;font-size:12.5px;color:var(--muted);white-space:pre-wrap;word-break:break-word}
   .stats{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
         padding:10px 14px;min-width:108px;flex:1}
@@ -243,6 +249,7 @@
     <button class="tab-btn active" data-tab="inv"><span class="tab-ic">🏠</span><span>Главная</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
     <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>ПФ</span></button>
+    <button class="tab-btn" data-tab="report"><span class="tab-ic">📄</span><span>Отчет</span></button>
     <button class="tab-btn" data-tab="hist"><span class="tab-ic">📖</span><span>Инструкции</span></button>
   </nav>
 
@@ -334,7 +341,23 @@
     </details>
   </section>
 
-  <section id="tab-hist" class="pane hidden">
+  <section id="tab-report" class="pane hidden">
+  <h2 class="h2big">Заполнение бланка</h2>
+  <div class="panel rptbox">
+    <p class="sub">Шаблон .xlsx (пересохранённый из .xls) + JSON из «Экспорт подсчёта JSON» → заполненный бланк. Форматирование сохраняется.</p>
+    <label for="rptTpl">Шаблон бланка (.xlsx)</label>
+    <input type="file" id="rptTpl" accept=".xlsx">
+    <label for="rptJson">Данные подсчёта (.json)</label>
+    <input type="file" id="rptJson" accept=".json,application/json">
+    <div class="bar">
+      <button id="btnReport" class="blue">Заполнить и скачать</button>
+    </div>
+    <div class="rpt-status" id="rptStatus"></div>
+    <div class="rpt-detail" id="rptDetail"></div>
+  </div>
+</section>
+
+<section id="tab-hist" class="pane hidden">
     <h2>Как пользоваться</h2>
     <div class="panel instr">
       <p><b>1. Настройка.</b> На «Главной» выбери ресторан, склад (Бар/Кухня) и дату инвентаризации.</p>
@@ -363,6 +386,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="xlsx.full.min.js"></script>
+<script src="exceljs.min.js"></script>
 <script>
 const RECIPES = [{"n": "Коровка", "items": [["Конфеты Коровка", "кг", 0.357143], ["Водка 5 Озер коктейльная 1л", "л", 0.357143], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.285714], ["Бонификатор пищевая добавка (бар)", "кг", 0.007143]]}, {"n": "Ананас Ваниль на роме", "items": [["Ром коктейльный Девил Айленд 1л", "л", 0.625], ["Ананас свежий", "кг", 0.844], ["Сахар-песок Aro", "кг", 0.15], ["Перец душистый горошек METRO Chef", "кг", 0.0025], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Ежевика Лайм на джине", "items": [["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Ежевика с/м", "кг", 0.533333], ["Сахар-песок Aro", "кг", 0.16], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Тимьян свежий", "кг", 0.001333], ["Ароматизатор пищевой Ежевика (бар)", "л", 5e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Клубника Базилик на джине", "items": [["Клубника с/м", "кг", 0.533333], ["Джин коктейльный Локвуд ориджинал Найт Эдишн 44%", "л", 0.666667], ["Базилик свежий (реган) в пучках", "кг", 0.021333], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Манго Чили на текиле", "items": [["Манго с/м кусочки", "кг", 0.533333], ["Текила коктейльная Ла Павеса 0,7л", "л", 0.666667], ["Сахар-песок Aro", "кг", 0.186667], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.001333], ["Перец Чили стручковый", "кг", 0.001333], ["Бонификатор пищевая добавка (бар)", "кг", 0.013333]]}, {"n": "Вишня Миндаль на бренди", "items": [["Вишня без косточки с/м", "кг", 0.5], ["Бренди Матис 5 лет коктейльтный 0,5л", "л", 0.625], ["Сироп Амаретто 1 л Монин", "л", 0.125], ["Сахар-песок Aro", "кг", 0.175], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.00125], ["Бонификатор пищевая добавка (бар)", "кг", 0.0125]]}, {"n": "Банан шоколад", "items": [["Банан", "кг", 0.677333], ["Водка 5 Озер коктейльная 1л", "л", 0.47619], ["Ароматизатор пищевой Банан (бар)", "л", 2e-06], ["Шоколад молочный Alpen Gold", "кг", 0.190476], ["Бонификатор пищевая добавка (бар)", "кг", 0.004762], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.380952]]}, {"n": "Клубника со сливками", "items": [["Водка Царская Ваниль 0,5 л", "л", 0.526316], ["Клубника с/м", "кг", 0.368421], ["Сахар-песок Aro", "кг", 0.178947], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.315789], ["Ароматизатор пищевой Клубника (бар)", "л", 2e-06], ["Бонификатор пищевая добавка (бар)", "кг", 0.007368]]}, {"n": "7 овощей", "items": [["Набор на овощную настойку 1 шт 0.540 ФК", "шт", 1.25], ["Водка 5 Озер коктейльная 1л", "л", 0.875], ["Бонификатор пищевая добавка (бар)", "кг", 0.0075]]}, {"n": "Вишня - гранат", "items": [["Водка 5 Озер коктейльная 1л", "л", 0.740741], ["Набор для настойки вишня гранат 1 шт 1,6 кг ФК", "шт", 0.37037], ["Бонификатор пищевая добавка (бар)", "кг", 0.005556]]}, {"n": "Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.588235], ["Водка 5 Озер коктейльная 1л", "л", 0.588235], ["Супер джус лимон ФК", "л", 0.176471], ["Бонификатор пищевая добавка (бар)", "кг", 0.005882]]}, {"n": "Крем Лимончелло", "items": [["Набор для Лимончелло 1 шт 0,490 кг (цедра) ФК", "шт", 0.540541], ["Водка 5 Озер коктейльная 1л", "л", 0.540541], ["Сливки 10% Элакто/Белый город/Эконива", "л", 0.27027], ["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)", "кг", 0.004324], ["Бонификатор пищевая добавка (бар)", "кг", 0.008108]]}, {"n": "Соленая карамель", "items": [["Кордиал соленая карамель ФК", "л", 0.545455], ["Водка 5 Озер коктейльная 1л", "л", 0.454545], ["Бонификатор пищевая добавка (бар)", "кг", 0.010909]]}, {"n": "Маракуйя", "items": [["Пюре маракуйя зам. HQ purée/Agrobar/ArtPuree", "кг", 0.4], ["Водка 5 Озер коктейльная 1л", "л", 0.6], ["Сахар-песок Aro", "кг", 0.086], ["Бонификатор пищевая добавка (бар)", "кг", 0.006]]}, {"n": "На малине", "items": [["Малина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.416667], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]}, {"n": "На черной смородине", "items": [["Черная смородина с/м", "кг", 0.416667], ["Сахар-песок Aro", "кг", 0.333333], ["Водка 5 Озер коктейльная 1л", "л", 0.833333], ["Бонификатор пищевая добавка (бар)", "кг", 0.01]]},{"n": "Кокосовый ром", "items": [["Ром коктейльный Девил Айленд 1л", "л", 1.25], ["Паста кокосовая Happy Monkey", "кг", 0.125], ["Кокосовая стружка SpicExpert", "кг", 0.05]]}];
 const LS_KEY = "pf_history_v1";
@@ -1434,8 +1458,94 @@ function switchTab(tab){
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
   document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
+  document.getElementById("tab-report").classList.toggle("hidden", tab !== "report");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
 }
+
+const RPT_HEADERS = new Set(["наименование","наименование товара","наименован","товар","название","итого"]);
+function rptGoodsOf(json){
+  if(!json) return [];
+  if(Array.isArray(json)) return json;
+  if(Array.isArray(json.goods)) return json.goods;
+  return [];
+}
+function rptValOf(g){
+  for(const k of ["total","fact","qty","v"]){
+    const v = g ? g[k] : undefined;
+    if(v !== undefined && v !== null && v !== "") return v;
+  }
+  return null;
+}
+function rptClean(x){
+  const r = Math.round(x*1000)/1000;
+  if(Math.abs(r - Math.round(r)) < 1e-9) return Math.round(r);
+  return r;
+}
+async function runReport(){
+  const st = document.getElementById("rptStatus");
+  const det = document.getElementById("rptDetail");
+  st.textContent = ""; st.className = "rpt-status"; det.textContent = "";
+  const tpl = document.getElementById("rptTpl").files[0];
+  const jsn = document.getElementById("rptJson").files[0];
+  if(!tpl || !jsn){ st.textContent = "Выбери шаблон .xlsx и JSON."; return; }
+  try{
+    const json = JSON.parse(await jsn.text());
+    const goods = rptGoodsOf(json);
+    if(!goods.length){ st.textContent = "В JSON не найдено товаров (поле goods)."; return; }
+    const map = new Map();
+    for(const g of goods){
+      const nm = (g && (g.name || g.n)) || "";
+      const k = canon(nm);
+      if(k && !map.has(k)) map.set(k, { name: String(nm), val: rptValOf(g) });
+    }
+    if(!map.size){ st.textContent = "Не удалось извлечь названия из JSON."; return; }
+    if(!window.ExcelJS){ st.textContent = "Библиотека ExcelJS не загрузилась."; return; }
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await tpl.arrayBuffer());
+    let filled = 0, blankNoVal = 0;
+    const used = new Set();
+    wb.eachSheet(function(ws){
+      ws.eachRow(function(row){
+        const nmc = row.getCell(3).value;
+        if(nmc === null || nmc === undefined) return;
+        const nm = String(nmc).trim();
+        if(!nm) return;
+        const k = canon(nm);
+        if(!k || RPT_HEADERS.has(k)) return;
+        const hit = map.get(k);
+        if(!hit) return;
+        const num = toNum(hit.val);
+        if(isNaN(num)){ blankNoVal++; return; }
+        row.getCell(5).value = rptClean(num);
+        used.add(k);
+        filled++;
+      });
+    });
+    const unmatched = [];
+    map.forEach(function(v, k){ if(!used.has(k)) unmatched.push(v.name); });
+    const d = String(json.date || "").replace(/[^0-9-]/g, "");
+    const r = String(json.rest || "").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "");
+    const fname = (r ? r + "-" : "") + (d || "filled") + ".xlsx";
+    const out = await wb.xlsx.writeBuffer();
+    const blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+    st.textContent = "Готово: заполнено " + filled + " позиций";
+    let dt = "";
+    if(unmatched.length){
+      dt += "Не найдено в бланке (" + unmatched.length + "):\n" + unmatched.slice(0,40).join("\n") + (unmatched.length > 40 ? "\n…" : "");
+    }
+    if(blankNoVal) dt += (dt ? "\n\n" : "") + "Строк бланка без числового значения: " + blankNoVal;
+    det.textContent = dt;
+  }catch(e){
+    st.textContent = "Ошибка: " + (e && e.message ? e.message : e);
+    st.className = "rpt-status err";
+  }
+}
+document.getElementById("btnReport").addEventListener("click", runReport);
 
 function syncInvSetup(){
   document.getElementById("invDate").value = invState.date || localToday();
