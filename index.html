@@ -89,10 +89,17 @@
   td.neg{color:var(--danger)}
   td.pos{color:var(--acc2)}
   .empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
-  .hist{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .hist{border-bottom:1px solid var(--line)}
   .hist:last-child{border-bottom:none}
+  .hist summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none}
+  .hist summary::-webkit-details-marker{display:none}
   .hist .hd{font-weight:600;font-size:14px;min-width:88px}
   .hist .hs{flex:1;font-size:12px;color:var(--muted)}
+  .hist .hbody{padding:2px 14px 12px}
+  .hist .hgoods{width:100%;border-collapse:collapse;margin-bottom:8px}
+  .hist .hgoods th,.hist .hgoods td{border:1px solid var(--line);padding:4px 8px;font-size:12px;text-align:left}
+  .hist .hgoods td.num{text-align:right}
+  .hist .hactions{display:flex;gap:8px}
   .hist button{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
      background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
   .hist .del{width:34px;padding:0;color:var(--danger)}
@@ -219,7 +226,7 @@
   <nav class="tabs" id="navTabs">
     <button class="tab-btn active" data-tab="inv"><span class="tab-ic">🏠</span><span>Главная</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
-    <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>Полуфабрикаты</span></button>
+    <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>ПФ</span></button>
     <button class="tab-btn" data-tab="hist"><span class="tab-ic">📖</span><span>Инструкции</span></button>
   </nav>
 
@@ -257,7 +264,7 @@
     <div id="invGroups"></div>
 
     <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvReset">Очистить расчёт</button></div>
+    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvReset">Очистить расчёт</button><button id="btnInvPrintDiff">Печать расхождений</button></div>
     <div class="panel"><div id="invDiffList"></div></div>
 
     <h2>Сохранённые подсчёты ПФ</h2>
@@ -266,6 +273,10 @@
       <button id="btnSave" class="primary">Сохранить</button>
     </div>
     <div class="panel"><div id="history"></div></div>
+
+    <div class="bar">
+      <button id="btnInvClearFact">Сбросить введённые данные</button>
+    </div>
   </section>
 
   <section id="tab-count" class="pane hidden">
@@ -308,7 +319,7 @@
   <section id="tab-hist" class="pane hidden">
     <h2>Как пользоваться</h2>
     <div class="panel instr">
-      <p><b>1. Полуфабрикаты.</b> Введи остатки настоек (л) и других ПФ (л/кг). Ниже сразу виден «Итог по товарам» — сколько базовых товаров в них заложено.</p>
+      <p><b>1. ПФ.</b> Введи остатки настоек (л) и других ПФ (л/кг). Ниже сразу виден «Итог по товарам» — сколько базовых товаров в них заложено.</p>
       <p><b>2. Добавить ПФ в Товары.</b> Кнопка «Добавить ПФ в Товары» переносит разложенные товары в список «Товары» и на «Главную» (столбец «из ПФ»). Повторное нажатие обновляет значения, не задваивая.</p>
       <p><b>3. Главная.</b> Выбери склад и дату, импортируй отчёт остатков (.xlsx) или вводи факт вручную по группам. Расхождения «факт − расчёт» подсвечиваются автоматически.</p>
       <p><b>4. Сохранение.</b> На «Главной» можно сохранить подсчёт ПФ и загрузить его позже. «Сохранить» в «Товарах» сохраняет данные инвентаризации.</p>
@@ -469,12 +480,29 @@ function renderHist(){
   }
   let h = '';
   hist.forEach(r=>{
-    h += '<div class="hist">'
-       +   '<div class="hd">'+esc(r.date)+'</div>'
-       +   '<div class="hs">ПФ: '+r.n_pf+' · товаров: '+r.n_tov+' · '+fmt(r.vol)+' л</div>'
+    const c = computeTotals(r.pf || {});
+    const tov = Object.entries(c.totals).sort((a,b)=>b[1].v-a[1].v);
+    h += '<details class="hist">'
+       +   '<summary>'
+       +     '<div class="hd">'+esc(r.date)+'</div>'
+       +     '<div class="hs">ПФ: '+c.cnt+' · товаров: '+tov.length+' · '+fmt(c.vol)+' л</div>'
+       +   '</summary>'
+       +   '<div class="hbody">';
+    if(tov.length){
+      h += '<table class="hgoods"><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
+      tov.forEach(([n,o])=>{
+        h += '<tr><td>'+esc(n)+'</td><td class="num">'+fmt(o.v)+'</td><td>'+esc(o.u)+'</td></tr>';
+      });
+      h += '</table>';
+    } else {
+      h += '<div class="empty">Товаров нет — введите остатки ПФ</div>';
+    }
+    h += '<div class="hactions">'
        +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
        +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
-       + '</div>';
+       + '</div>'
+       + '</div>'
+       + '</details>';
   });
   box.innerHTML = h;
 }
@@ -708,11 +736,20 @@ function stepFact(key, inp, d){
   if(next === 0){ delete invState.fact[key]; inp.value = ""; sbPush(key, null); }
   else { invState.fact[key] = next; inp.value = next; sbPush(key, next); }
   updateDiffByKey(key); updateInvStats(); invSaveState();
+  syncFactTwins(key, inp);
 }
 
 function renderInvGroups(){
   renderGroupsInto("invGroups", true);
   renderGroupsInto("invCountGroups", false);
+}
+
+function syncFactTwins(key, except){
+  document.querySelectorAll("input.factinp").forEach(inp=>{
+    if(inp === except || inp.dataset.key !== key) return;
+    const v = invState.fact[key];
+    inp.value = (v === undefined || v === null) ? "" : String(v);
+  });
 }
 
 function focusNextFact(cur){
@@ -765,7 +802,7 @@ function renderGroupsInto(boxId, showDiff){
     tbl.className = "goods";
     tbl.innerHTML = showDiff
       ? '<tr><th class="gn">Товар</th><th>Факт</th><th>из ПФ</th><th>±</th></tr>'
-      : '<tr><th class="gn">Товар</th><th>Факт</th><th>из ПФ</th></tr>';
+      : '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
     goods.forEach((gd)=>{
       const key = goodKey(g.g, gd.n);
       const tr = document.createElement("tr");
@@ -780,6 +817,7 @@ function renderGroupsInto(boxId, showDiff){
       f.addEventListener("input", ()=>{
         if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
         updateDiffByKey(key); updateInvStats(); invSaveState();
+        syncFactTwins(key, f);
       });
       f.addEventListener("change", ()=>{
         let n = toNum(f.value) || 0;
@@ -787,6 +825,7 @@ function renderGroupsInto(boxId, showDiff){
         if(n === 0){ delete invState.fact[key]; f.value = ""; sbPush(key, null); }
         else { invState.fact[key] = n; f.value = n; sbPush(key, n); }
         updateDiffByKey(key); updateInvStats(); invSaveState();
+        syncFactTwins(key, f);
       });
       f.addEventListener("keydown", (e)=>{
         if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
@@ -799,10 +838,12 @@ function renderGroupsInto(boxId, showDiff){
       st.append(bm, f, bp);
       tdFact.appendChild(st);
 
-      const tdPf = document.createElement("td"); tdPf.className = "num pfadd";
-      tdPf.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "";
-      tr.append(tdName, tdFact, tdPf);
+      tr.appendChild(tdName);
+      tr.appendChild(tdFact);
       if(showDiff){
+        const tdPf = document.createElement("td"); tdPf.className = "num pfadd";
+        tdPf.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "";
+        tr.appendChild(tdPf);
         const tdDiff = document.createElement("td"); tdDiff.className = "diff";
         tr.appendChild(tdDiff);
         (diffCells[key] = diffCells[key] || []).push(tdDiff);
@@ -910,6 +951,51 @@ function invReset(){
   invSaveState();
   renderInvGroups();
   updateInvStats();
+}
+
+function invClearFact(){
+  if(!confirm("Сбросить все введённые остатки (факт и добавления из ПФ)?")) return;
+  invState.fact = {};
+  invState.pfAdd = {};
+  invSaveState();
+  renderInvGroups();
+  updateInvStats();
+}
+
+function printDiff(){
+  const date = invState.date || localToday();
+  const area = document.getElementById("printArea");
+  const rows = [];
+  INV_GROUPS.forEach(g=>{
+    if(g.g === "База данных") return;
+    g.goods.forEach(gd=>{
+      const key = goodKey(g.g, gd.n);
+      const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      const has = invState.fact[key] !== undefined || pf > 0;
+      if(!has) return;
+      const f = (invState.fact[key] || 0) + pf;
+      const c = invState.calc[key] || 0;
+      const d = f - c;
+      rows.push({g:g.g, n:gd.n, u:gd.u, f:f, c:c, d:d});
+    });
+  });
+  rows.sort((a,b)=> Math.abs(b.d) - Math.abs(a.d));
+  let h = '<h1>Отчёт по расхождениям</h1>';
+  h += '<div class="pmeta">Склад: '+esc(invRest||"")+' · Дата: '+esc(date)+' · сформировано: '+esc(localToday())+'</div>';
+  if(!rows.length){
+    h += '<p class="pempty">Нет введённых данных — расхождения отсутствуют.</p>';
+  } else {
+    h += '<table><tr><th>Товар</th><th>Факт</th><th>Расчёт</th><th>±</th></tr>';
+    rows.forEach(r=>{
+      h += '<tr><td><span class="dg">'+esc(r.g)+'</span>'+esc(r.n)+' <span class="unit">'+esc(r.u)+'</span></td>'
+         + '<td class="num">'+fmt(r.f)+'</td>'
+         + '<td class="num">'+fmt(r.c)+'</td>'
+         + '<td class="num">'+fmtDiff(r.d)+'</td></tr>';
+    });
+    h += '</table>';
+  }
+  area.innerHTML = h;
+  window.print();
 }
 
 function importJsonFile(file){
@@ -1334,6 +1420,8 @@ function initInv(){
   document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
+document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
+document.getElementById("btnInvClearFact").addEventListener("click", invClearFact);
   document.getElementById("btnInvImport").addEventListener("click", ()=>{ document.getElementById("jsonFile").click(); });
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
