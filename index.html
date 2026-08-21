@@ -67,7 +67,7 @@
   .savebar{display:flex;gap:8px;margin-top:16px}
   .savebar input{flex:1;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--input);color:var(--txt);padding:0 12px;font-size:15px}
-  .savebar button{height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
+  .savebar button{flex:1;height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .savebar button.primary{background:var(--acc);color:#171103;border-color:var(--acc)}
   .bar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
@@ -98,7 +98,7 @@
   .diffwrap .panel th{color:#4a5360}
   .diffwrap .panel td{color:#000}
   .diffwrap .panel td.num{color:#000}
-  .diffwrap .panel td.diffc{text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+  .diffwrap .panel td.diffc{text-align:center;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;padding:10px 6px}
   .diffwrap .panel td.diffc.neg{color:#d32f2f}
   .diffwrap .panel td.diffc.pos{color:#1b8a3a}
   .diffwrap .panel td.diffc.zero{color:#6a7280}
@@ -1041,7 +1041,9 @@ function exportCalc(){
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "podschyot-" + (invState.date || localToday()) + ".json";
+  const rest = String(invRestaurant || invRest || "").trim().replace(/[^A-Za-zА-Яа-я0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  const stamp = localNow().replace(" ", "_").replace(/:/g, "-");
+  a.download = "podschyot-" + (rest ? rest + "-" : "") + stamp + ".json";
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(a.href);
   toast("Экспортировано " + rows.length + " позиций");
