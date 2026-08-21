@@ -805,6 +805,7 @@ function renderGroupsInto(boxId, showDiff){
   if(showDiff){ for(const k in diffCells) delete diffCells[k]; }
   const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
+    if(g.g === "База данных") return;
     const goods = q ? g.goods.filter(gd => canon(gd.n).includes(q) || canon(g.g).includes(q)) : g.goods;
     if(q && !goods.length) return;
     const det = document.createElement("details");
