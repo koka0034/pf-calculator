@@ -26,7 +26,7 @@
   header{padding:10px 2px 12px;text-align:center}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 14px}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
   .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
        min-height:70px;border:1px solid var(--line);border-radius:16px;background:var(--card);
        color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
@@ -242,14 +242,13 @@
 <div class="wrap">
   <header>
     <h1>Инвентаризация</h1>
-    <div class="sub">Калькулятор ПФ Товары Инвентаризация и сверка остатков</div>
+    <div class="sub">Учёт остатков: разборка ПФ в товары, подсчёт и сверка</div>
   </header>
 
   <nav class="tabs" id="navTabs">
     <button class="tab-btn active" data-tab="inv"><span class="tab-ic">🏠</span><span>Главная</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
     <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>ПФ</span></button>
-    <button class="tab-btn" data-tab="report"><span class="tab-ic">📄</span><span>Отчет</span></button>
     <button class="tab-btn" data-tab="hist"><span class="tab-ic">📖</span><span>Инструкции</span></button>
   </nav>
 
@@ -274,10 +273,18 @@
       <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
       <div class="bar">
         <button id="btnInvImportCalc">Импорт отчёта остатков xlsx</button>
-        <button id="btnInvImport" class="blue">Экспорт подсчёта JSON</button>
+      </div>
+      <div class="panel rptbox">
+        <p class="sub">Заполнение бланка: выбери шаблон (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие».</p>
+        <label for="rptTpl">Шаблон бланка (.xlsx)</label>
+        <input type="file" id="rptTpl" accept=".xlsx">
+        <div class="bar">
+          <button id="btnReport" class="blue">Заполнить и скачать</button>
+        </div>
+        <div class="rpt-status" id="rptStatus"></div>
+        <div class="rpt-detail" id="rptDetail"></div>
       </div>
       <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
-      <input type="file" id="jsonFile" accept=".json" class="hidden">
       <div class="sub" id="invImportRes"></div>
     </div>
 
@@ -344,41 +351,25 @@
     </details>
   </section>
 
-  <section id="tab-report" class="pane hidden">
-  <h2 class="h2big">Заполнение бланка</h2>
-  <div class="panel rptbox">
-    <p class="sub">Шаблон .xlsx (пересохранённый из .xls) + JSON из «Экспорт подсчёта JSON» → заполненный бланк. Форматирование сохраняется.</p>
-    <label for="rptTpl">Шаблон бланка (.xlsx)</label>
-    <input type="file" id="rptTpl" accept=".xlsx">
-    <label for="rptJson">Данные подсчёта (.json)</label>
-    <input type="file" id="rptJson" accept=".json,application/json">
-    <div class="bar">
-      <button id="btnReport" class="blue">Заполнить и скачать</button>
-    </div>
-    <div class="rpt-status" id="rptStatus"></div>
-    <div class="rpt-detail" id="rptDetail"></div>
-  </div>
-</section>
-
 <section id="tab-hist" class="pane hidden">
     <h2>Как пользоваться</h2>
     <div class="panel instr">
       <p><b>1. Настройка.</b> На «Главной» выбери ресторан, склад (Бар/Кухня) и дату инвентаризации.</p>
       <p><b>2. Импорт бланка.</b> Кнопка «Импорт бланка (Excel)» загружает структуру товаров по группам для подсчёта.</p>
-      <p><b>3. Импорт отчёта.</b> Кнопка «Импорт отчёта остатков xlsx» подгружает остатки из крайнего правого столбца файла.</p>
-      <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает все категории сразу.</p>
+      <p><b>3. Импорт отчёта.</b> Кнопка «Импорт отчёта остатков xlsx» подгружает расчётные остатки из крайнего правого столбца файла.</p>
+      <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает категории.</p>
       <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
-      <p><b>6. Разборка ПФ.</b> Остатки настоек и других ПФ автоматически раскладываются в товары и появляются на «Главной» в столбце «из ПФ» — отдельно нажимать ничего не нужно.</p>
-      <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. Кнопка «Печать расхождений» формирует печатный отчёт.</p>
-      <p><b>8. Совместный режим.</b> Кнопка «Включить совместный режим» позволяет нескольким устройствам заполнять один отчёт одновременно (нужна связь).</p>
-      <p><b>9. Сохранение и экспорт.</b> «Сохранить» на «Главной»/«Товарах» сохраняет подсчёт локально. «Экспорт подсчёта JSON» выгружает данные файлом.</p>
-      <p><b>10. Сброс.</b> Кнопки «Очистить расчёт данные» и «Сбросить введённые данные» очищают данные подсчёта.</p>
-      <p><b>11. Заполнение бланка.</b> На вкладке «Отчет» выбери шаблон бланка (.xlsx — пересохрани исходный .xls один раз) и JSON из «Экспорт подсчёта JSON», затем «Заполнить и скачать». Остатки подставятся в колонку «Фактическое наличие», форматирование сохранится; внизу покажется количество заполненных позиций и список товаров, не найденных в бланке.</p>
+      <p><b>6. Разборка ПФ.</b> Остатки ПФ автоматически раскладываются в товары и появляются на «Главной» в столбце «из ПФ» — отдельно нажимать ничего не нужно.</p>
+      <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. «Печать расхождений» формирует печатный отчёт.</p>
+      <p><b>8. Выгрузка.</b> На вкладках «Товары» и «ПФ» кнопка «Сохранить и выгрузить результаты» сохраняет подсчёт локально и отправляет его на сервер.</p>
+      <p><b>9. Приём.</b> На «Главной» кнопка «Принять результаты с сервера» забирает выгруженные данные, суммирует их с текущими и очищает сервер.</p>
+      <p><b>10. Заполнение бланка.</b> На «Главной» выбери шаблон бланка (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие», форматирование сохранится.</p>
+      <p><b>11. Сброс.</b> Кнопки «Очистить расчёт данные» и «Сбросить введённые данные» очищают данные подсчёта.</p>
     </div>
   </section>
 
   <footer>
-    История инвентаризаций локально на вашем устройстве. Подсчёт работает офлайн. Связь нужна только для совместной работы. В благодарность славить, превозносить и возносить молитвы.
+    Подсчёт работает офлайн; связь нужна только для выгрузки и приёма результатов.
   </footer>
 </div>
 
@@ -1098,29 +1089,6 @@ function toggleAllGroups(){
   document.getElementById("btnGrpToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
 }
 
-function exportCalc(){
-  const rows = [];
-  INV_GROUPS.forEach(g=>{
-    g.goods.forEach(gd=>{
-      const key = goodKey(g.g, gd.n);
-      const f = invState.fact[key] || 0;
-      const p = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      if(f <= 0 && p <= 0) return;
-      rows.push({group:g.g, name:gd.n, unit:gd.u, fact:Math.round(f*1000)/1000, pf:Math.round(p*1000)/1000, total:Math.round((f+p)*1000)/1000});
-    });
-  });
-  const data = { source:"inventory", restaurant: invRestaurant || "", rest: invRest || "", date: invState.date || localToday(), goods: rows };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  const rest = String(invRestaurant || invRest || "").trim().replace(/[^A-Za-zА-Яа-я0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
-  const stamp = localNow().replace(" ", "_").replace(/:/g, "-");
-  a.download = "podschyot-" + (rest ? rest + "-" : "") + stamp + ".json";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(a.href);
-  toast("Экспортировано " + rows.length + " позиций");
-}
-
 function printDiff(){
   const date = invState.date || localToday();
   const area = document.getElementById("printArea");
@@ -1520,23 +1488,22 @@ function switchTab(tab){
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
   document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
-  document.getElementById("tab-report").classList.toggle("hidden", tab !== "report");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
 }
 
 const RPT_HEADERS = new Set(["наименование","наименование товара","наименован","товар","название","итого"]);
-function rptGoodsOf(json){
-  if(!json) return [];
-  if(Array.isArray(json)) return json;
-  if(Array.isArray(json.goods)) return json.goods;
-  return [];
-}
-function rptValOf(g){
-  for(const k of ["total","fact","qty","v"]){
-    const v = g ? g[k] : undefined;
-    if(v !== undefined && v !== null && v !== "") return v;
-  }
-  return null;
+function buildReportGoods(){
+  const rows = [];
+  INV_GROUPS.forEach(g=>{
+    g.goods.forEach(gd=>{
+      const key = goodKey(g.g, gd.n);
+      const f = invState.fact[key] || 0;
+      const p = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      if(f <= 0 && p <= 0) return;
+      rows.push({name:gd.n, total:Math.round((f+p)*1000)/1000});
+    });
+  });
+  return rows;
 }
 function rptClean(x){
   const r = Math.round(x*1000)/1000;
@@ -1548,19 +1515,16 @@ async function runReport(){
   const det = document.getElementById("rptDetail");
   st.textContent = ""; st.className = "rpt-status"; det.textContent = "";
   const tpl = document.getElementById("rptTpl").files[0];
-  const jsn = document.getElementById("rptJson").files[0];
-  if(!tpl || !jsn){ st.textContent = "Выбери шаблон .xlsx и JSON."; return; }
+  if(!tpl){ st.textContent = "Выбери шаблон бланка (.xlsx)."; return; }
   try{
-    const json = JSON.parse(await jsn.text());
-    const goods = rptGoodsOf(json);
-    if(!goods.length){ st.textContent = "В JSON не найдено товаров (поле goods)."; return; }
+    const goods = buildReportGoods();
+    if(!goods.length){ st.textContent = "Нет введённых остатков — сначала заполни подсчёт."; return; }
     const map = new Map();
     for(const g of goods){
-      const nm = (g && (g.name || g.n)) || "";
+      const nm = g.name || "";
       const k = canon(nm);
-      if(k && !map.has(k)) map.set(k, { name: String(nm), val: rptValOf(g) });
+      if(k && !map.has(k)) map.set(k, { name: String(nm), val: g.total });
     }
-    if(!map.size){ st.textContent = "Не удалось извлечь названия из JSON."; return; }
     if(!window.ExcelJS){ st.textContent = "Библиотека ExcelJS не загрузилась."; return; }
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(await tpl.arrayBuffer());
@@ -1585,8 +1549,8 @@ async function runReport(){
     });
     const unmatched = [];
     map.forEach(function(v, k){ if(!used.has(k)) unmatched.push(v.name); });
-    const d = String(json.date || "").replace(/[^0-9-]/g, "");
-    const r = String(json.rest || "").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "");
+    const d = String(invState.date || "").replace(/[^0-9-]/g, "");
+    const r = String(invRestaurant || invRest || "").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "");
     const fname = (r ? r + "-" : "") + (d || "filled") + ".xlsx";
     const out = await wb.xlsx.writeBuffer();
     const blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
@@ -1607,6 +1571,7 @@ async function runReport(){
     st.className = "rpt-status err";
   }
 }
+
 document.getElementById("btnReport").addEventListener("click", runReport);
 
 function syncInvSetup(){
@@ -1642,12 +1607,10 @@ function initInv(){
   document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
 document.getElementById("btnInvClearFact").addEventListener("click", invClearFact);
-  document.getElementById("btnInvImport").addEventListener("click", exportCalc);
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
-  document.getElementById("jsonFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) importJsonFile(f); e.target.value = ""; });
   document.getElementById("invDate").addEventListener("change", (e)=>{ invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
