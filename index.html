@@ -281,22 +281,23 @@
       <div class="sub" id="invImportRes"></div>
     </div>
 
+    <h2>Сохранённые подсчёты</h2>
+    <div class="savebar">
+      <button id="btnSave" class="primary">Сохранить</button>
+    </div>
+    <div class="panel"><div id="history"></div></div>
+
     <h2 class="h2big">Список товаров для подсчёта</h2>
     <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
     <div id="invGroups"></div>
 
-    <details class="diffwrap" id="invDiffWrap" open>
+    <details class="diffwrap" id="invDiffWrap">
       <summary><span class="caret">›</span><span>Расхождения (факт − расчёт)</span></summary>
       <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff" class="blue">Печать расхождений</button></div>
       <div class="panel"><div id="invDiffList"></div></div>
     </details>
 
-    <h2>Сохранённые подсчёты ПФ</h2>
-    <div class="savebar">
-      <input type="date" id="saveDate">
-      <button id="btnSave" class="primary">Сохранить</button>
-    </div>
-    <div class="panel"><div id="history"></div></div>
+
 
     <div class="bar">
       <button id="btnInvReset" class="burgundy">Очистить расчёт данные</button>
@@ -409,6 +410,11 @@ function localToday(){
   const l = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return l.toISOString().slice(0,10);
 }
+function localNow(){
+  const d = new Date();
+  const l = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return l.toISOString().slice(0,10) + " " + l.toISOString().slice(11,16);
+}
 
 function getQ(i){
   const inp = document.querySelector('input[data-i="'+i+'"]');
@@ -497,22 +503,23 @@ function getHist(){
 function setHist(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
 
 function saveRecord(){
-  const date = document.getElementById("saveDate").value || localToday();
+  const ts = localNow();
   const v = getInputs();
   const c = computeTotals(v);
-  let hist = getHist().filter(x => x.date !== date);
-  hist.push({date: date, pf: v, fact: Object.assign({}, invState.fact), n_pf: c.cnt, n_tov: Object.keys(c.totals).length, vol: c.vol});
+  let hist = getHist().filter(x => x.date !== ts);
+  hist.push({date: ts, pf: v, fact: Object.assign({}, invState.fact), n_pf: c.cnt, n_tov: Object.keys(c.totals).length, vol: c.vol});
   hist.sort((a,b)=> a.date < b.date ? -1 : 1);
   setHist(hist);
-  document.getElementById("saveDate").value = date;
   renderHist();
+  toast("Сохранено: " + ts);
 }
 function loadRecord(date){
   const r = getHist().find(x => x.date === date);
   if(!r) return;
   setAllInputs(r.pf || {});
-  document.getElementById("saveDate").value = date;
+  sbApplyServerFact(r.fact || {});
   recompute();
+  renderInvDiff();
 }
 function delRecord(date){
   setHist(getHist().filter(x => x.date !== date));
@@ -543,7 +550,7 @@ function renderHist(){
 function doPrint(){
   const v = getInputs();
   const c = computeTotals(v);
-  const date = document.getElementById("saveDate").value || localToday();
+  const date = invState.date || localToday();
   const area = document.getElementById("printArea");
   let h = '<h1>Разборка ПФ → товары</h1>';
   h += '<div class="pmeta">Дата подсчёта: '+esc(date)+' · сформировано: '+esc(localToday())+'</div>';
@@ -992,7 +999,7 @@ function addGroup(){
 function invSave(){
   if(!invRest){ toast("Сначала добавьте ресторан"); return; }
   invSaveState();
-  toast("Сохранено: " + invRest);
+  saveRecord();
 }
 function invReset(){
   if(!confirm("Очистить все значения «расчёт»?")) return;
@@ -1611,7 +1618,7 @@ document.getElementById("history").addEventListener("click", function(e){
   if(b.classList.contains("del")) delRecord(d);
   else loadRecord(d);
 });
-document.getElementById("saveDate").value = localToday();
+
 
 build();
 recompute();
