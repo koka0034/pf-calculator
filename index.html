@@ -235,8 +235,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Калькулятор ПФ Товары Инвентаризация и сверка остатков</h1>
-    <div class="sub">Учёт остатков · разборка полуфабрикатов по ТТК</div>
+    <h1>Инвентаризация</h1>
+    <div class="sub">Калькулятор ПФ Товары Инвентаризация и сверка остатков</div>
   </header>
 
   <nav class="tabs" id="navTabs">
@@ -805,7 +805,7 @@ function renderGroupsInto(boxId, showDiff){
   if(showDiff){ for(const k in diffCells) delete diffCells[k]; }
   const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
-    if(g.g === "База данных") return;
+    if(g.g === "База данных" || g.g === "Импортированные") return;
     const goods = q ? g.goods.filter(gd => canon(gd.n).includes(q) || canon(g.g).includes(q)) : g.goods;
     if(q && !goods.length) return;
     const det = document.createElement("details");
@@ -1088,28 +1088,18 @@ function importJsonFile(file){
 function applyRows(rows, target){
   const map = {};
   INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ const c = canon(gd.n); if(!(c in map)) map[c] = goodKey(g.g, gd.n); }); });
-  let written = 0, existing = 0, added = 0;
+  let written = 0, existing = 0, skipped = 0;
   rows.forEach(pr=>{
     if(!pr) return;
-    const c = canon(pr.name);
-    let key = map[c];
-    const isExisting = key !== undefined;
-    if(!isExisting){
-      let grp = INV_GROUPS.find(g=>g.g === "Импортированные");
-      if(!grp){ grp = {g:"Импортированные", goods:[]}; INV_GROUPS.push(grp); }
-      grp.goods.push({n:pr.name, u:"шт"});
-      key = goodKey("Импортированные", pr.name);
-      map[c] = key;
-      added++;
-    }
+    const key = map[canon(pr.name)];
+    if(key === undefined){ skipped++; return; }
     if(target === "calc") invState.calc[key] = pr.qty; else invState.fact[key] = pr.qty;
     written++;
-    if(isExisting) existing++;
+    existing++;
   });
-  if(added) invPersistDict();
   invSaveState();
   renderInvGroups(); updateInvStats();
-  return {written:written, existing:existing, added:added};
+  return {written:written, existing:existing, skipped:skipped};
 }
 
 const NAME_KEYS = ["наименован","назван","товар","номенклатур","продукт","ингредиент","блюдо","позици"];
@@ -1221,7 +1211,7 @@ function handleFile(file){
         return;
       }
       const r2 = applyRows(p.rows, "calc");
-      res.textContent = "Файл «" + file.name + "»: обновлено в списке " + r2.existing + " · новых " + r2.added
+      res.textContent = "Файл «" + file.name + "»: обновлено " + r2.existing + " · пропущено (нет в бланке) " + r2.skipped
         + (p.sample.length ? " · пример: " + p.sample.join(" · ") : "");
       toast("Импорт: обновлено " + r2.existing + " поз.");
     }catch(err){
