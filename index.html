@@ -459,6 +459,7 @@ function addStep(i, d){
   q = Math.max(0, Math.round((q + d) * 100) / 100);
   setQ(i, q);
   recompute();
+  syncPf();
 }
 
 function recompute(){
@@ -578,6 +579,7 @@ function doPrint(){
 function resetAll(){
   ALL_PF.forEach((r,i)=>setQ(i, 0));
   recompute();
+  syncPf();
 }
 
 const OTHER_PF = [{"n":"Сироп Лемонграсс","u":"л","items":[["Лемонграсс (лимонная трава)","кг",0.0875],["Сахар-песок Aro","кг",0.75]]},{"n":"Лаймовый суперджус","u":"л","items":[["Лайм свежий","кг",0.436047],["Кислота лимонная","кг",0.023256],["Яблочная кислота","кг",0.009302]]},{"n":"Малиновая сырная пенка","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.280899],["Сливки растительные CREAMART 20%","л",0.606742],["Сироп малина ODK","л",0.044944],["Гарниш Малина WTS?!","кг",0.022472],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.005618],["Сахар-песок Aro","кг",0.037454],["Свекла сушеная натуральная (порошок)","кг",0.004494]]},{"n":"Грильяж","u":"кг","items":[["Сахар-песок Aro","кг",1],["Орех Грецкий","кг",0.25]]},{"n":"Чай каркаде (гибискус)","u":"л","items":[["Каркаде напиток чайный","кг",0.021053]]},{"n":"Крем тирамису","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.3125],["Сливки растительные CREAMART 20%","л",0.675],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.003125],["Сахар-песок Aro","кг",0.020834]]},{"n":"Чай липа","u":"л","items":[["Мед цветочный натуральный ГОСТ","кг",0.04],["Липа сушеная","кг",0.025]]},{"n":"Чай жасмин","u":"л","items":[["ЧАЙ пакет жасмин Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Ананасовая пена","u":"л","items":[["Нектар ананас-яблоко 1л","л",0.888889],["Пюре маракуйя ФК","л",0.111111],["Ксантановая камедь","кг",0.008889],["Альбумин","кг",0.006667],["Баллончики д/сифона д/сливок","шт",2.222222]]},{"n":"Ванильный сахар","u":"кг","items":[["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.125],["Сахар-песок Aro","кг",0.833333]]},{"n":"Морс 2,5 л","u":"л","items":[["Морс Малиновый ФК","л",0.4]]},{"n":"Чай бергамот (эрл грей)","u":"л","items":[["ЧАЙ пакет эрл грей Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Сахарный сироп","u":"л","items":[["Сахар-песок Aro","кг",0.75]]},{"n":"Взбитые сливки белые","u":"кг","items":[["Сливки растительные CREAMART 20%","л",1.086957],["Баллончики д/сифона д/сливок","шт",4.347826]]}];
@@ -595,7 +597,7 @@ function buildPfCard(r, i){
   bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
   const inp = document.createElement("input");
   inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
-  inp.dataset.i = i; inp.addEventListener("input", recompute);
+  inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); syncPf(); });
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
   st.append(bm, inp, bp);
@@ -694,6 +696,27 @@ function sbRefreshStatus(){
   if(sbLastUpdate) m += " · обновлено " + new Date(sbLastUpdate).toLocaleTimeString("ru-RU");
   sbSetStatus(m, true);
 }
+const PF_SYNC_KEY = "@pf@";
+function pfToSync(){ return getInputs(); }
+function syncPf(){ if(!sbActive || !sb) return; sbPush(PF_SYNC_KEY, pfToSync()); }
+function applyPfSync(pf){
+  const active = document.activeElement;
+  const activeIsPf = !!(active && active.matches && active.matches('input[data-i]'));
+  ALL_PF.forEach((r, i)=>{
+    const inp = document.querySelector('input[data-i="'+i+'"]');
+    if(!inp) return;
+    if(activeIsPf && inp === active) return;
+    const q = (pf && typeof pf === "object" && pf[r.n] !== undefined && pf[r.n] !== null) ? Number(pf[r.n]) : 0;
+    inp.value = q ? q : "";
+    inp.closest(".pf").classList.toggle("active", q > 0);
+  });
+  recompute();
+}
+function localSnapshot(){
+  const snap = Object.assign({}, invState.fact || {});
+  snap[PF_SYNC_KEY] = pfToSync();
+  return snap;
+}
 
 async function sbToggle(){
   if(sbActive){ sbStop(); return; }
@@ -705,21 +728,33 @@ async function sbToggle(){
   const { data, error } = await c.from("inventory_reports")
     .select("fact").eq("warehouse", wk).eq("report_date", date).maybeSingle();
   if(error){ sbSetStatus("Ошибка: " + error.message, false); return; }
-  const serverFact = (data && data.fact && typeof data.fact === "object") ? data.fact : {};
-  const localFact = invState.fact || {};
-  if(Object.keys(serverFact).length && Object.keys(localFact).length){
+  const rawFact = (data && data.fact && typeof data.fact === "object") ? data.fact : {};
+  const serverFact = Object.assign({}, rawFact);
+  const serverPf = serverFact[PF_SYNC_KEY];
+  delete serverFact[PF_SYNC_KEY];
+  const localSnap = localSnapshot();
+  const localFact = Object.assign({}, localSnap);
+  const localPf = localFact[PF_SYNC_KEY];
+  delete localFact[PF_SYNC_KEY];
+  const hasServer = Object.keys(serverFact).length > 0 || (serverPf && typeof serverPf === "object" && Object.keys(serverPf).length > 0);
+  const hasLocal = Object.keys(localFact).length > 0 || (localPf && typeof localPf === "object" && Object.keys(localPf).length > 0);
+  if(hasServer && hasLocal){
     const useServer = confirm("На сервере уже есть данные для этого ресторана, склада и даты.\n\nОК — загрузить данные с сервера (локальные будут заменены).\nОтмена — залить локальные данные на сервер (объединить).");
     if(useServer){
       invState.fact = serverFact;
+      if(serverPf && typeof serverPf === "object") applyPfSync(serverPf);
     } else {
-      const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localFact });
+      const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localSnap });
       if(se){ sbSetStatus("Ошибка: " + se.message, false); return; }
       invState.fact = Object.assign({}, serverFact, localFact);
+      if(localPf && typeof localPf === "object" && Object.keys(localPf).length) applyPfSync(localPf);
+      else if(serverPf && typeof serverPf === "object") applyPfSync(serverPf);
     }
-  } else if(Object.keys(serverFact).length){
+  } else if(hasServer){
     invState.fact = serverFact;
-  } else if(Object.keys(localFact).length){
-    const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localFact });
+    if(serverPf && typeof serverPf === "object") applyPfSync(serverPf);
+  } else if(hasLocal){
+    const { error: se } = await c.rpc("update_fact", { p_warehouse: wk, p_report_date: date, p_fact: localSnap });
     if(se){ sbSetStatus("Ошибка: " + se.message, false); return; }
   }
   sbWarehouse = wk; sbDate = date; sbActive = true; sbOnline = 0; sbLastUpdate = null;
@@ -877,13 +912,16 @@ function focusNextFact(cur){
 }
 
 function sbApplyServerFact(fact){
+  const raw = Object.assign({}, fact || {});
+  const pf = raw[PF_SYNC_KEY];
+  delete raw[PF_SYNC_KEY];
   const active = document.activeElement;
   let activeKey = null, activeLocal = null;
   if(active && active.matches && active.matches("input.factinp")){
     activeKey = active.dataset.key;
     activeLocal = (invState.fact[activeKey] !== undefined) ? invState.fact[activeKey] : null;
   }
-  const next = Object.assign({}, fact || {});
+  const next = Object.assign({}, raw);
   if(activeKey !== null){
     if(activeLocal === null) delete next[activeKey];
     else next[activeKey] = activeLocal;
@@ -897,6 +935,7 @@ function sbApplyServerFact(fact){
   for(const k in diffCells) updateDiffByKey(k);
   updateInvStats();
   renderInvDiff();
+  if(pf && typeof pf === "object") applyPfSync(pf);
 }
 
 function renderGroupsInto(boxId, showDiff){
