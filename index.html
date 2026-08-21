@@ -26,19 +26,15 @@
   header{padding:10px 2px 12px;text-align:center}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .menu{position:relative;margin:0 0 14px}
-  .menu-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;height:48px;
-       background:var(--acc);border:1px solid var(--acc);border-radius:12px;color:#171103;
-       font-size:15px;font-weight:600;padding:0 14px;cursor:pointer}
-  .menu-caret{transition:transform .2s;color:#171103}
-  .menu.open .menu-caret{transform:rotate(180deg)}
-  .menu-list{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;
-       background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;
-       box-shadow:0 8px 24px rgba(0,0,0,.45)}
-  .menu.open .menu-list{display:flex;flex-direction:column;gap:4px}
-  .menu-item{width:100%;text-align:left;height:44px;border:none;border-radius:9px;background:transparent;
-       color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;padding:0 14px}
-  .menu-item.active{background:var(--acc);color:#171103}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
+  .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+       min-height:70px;border:1px solid var(--line);border-radius:16px;background:var(--card);
+       color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
+  .tab-ic{font-size:22px;line-height:1}
+  .tab-btn.active{background:var(--acc);color:#171103;border-color:var(--acc)}
+  .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
+  .instr p:last-child{margin-bottom:0}
+  .pfadd{color:var(--acc2);font-size:13px}
   .pane.hidden{display:none}
   .stats{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
@@ -220,18 +216,12 @@
     <div class="sub">Калькулятор ПФ → товары · инвентаризация и сверка остатков</div>
   </header>
 
-  <div class="menu" id="menuBox">
-    <button class="menu-toggle" id="menuToggle" type="button">
-      <span id="menuLabel">Инвентаризация</span>
-      <span class="menu-caret">▾</span>
-    </button>
-    <div class="menu-list">
-      <button class="menu-item active" data-tab="inv">Инвентаризация</button>
-      <button class="menu-item" data-tab="count">Товары</button>
-      <button class="menu-item" data-tab="pf">Полуфабрикаты</button>
-      <button class="menu-item" data-tab="hist">История</button>
-    </div>
-  </div>
+  <nav class="tabs" id="navTabs">
+    <button class="tab-btn active" data-tab="inv"><span class="tab-ic">🏠</span><span>Главная</span></button>
+    <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
+    <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>Полуфабрикаты</span></button>
+    <button class="tab-btn" data-tab="hist"><span class="tab-ic">📖</span><span>Инструкции</span></button>
+  </nav>
 
   <section id="tab-inv" class="pane">
     <div class="stats">
@@ -267,8 +257,15 @@
     <div id="invGroups"></div>
 
     <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button></div>
+    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvReset">Очистить расчёт</button></div>
     <div class="panel"><div id="invDiffList"></div></div>
+
+    <h2>Сохранённые подсчёты ПФ</h2>
+    <div class="savebar">
+      <input type="date" id="saveDate">
+      <button id="btnSave" class="primary">Сохранить</button>
+    </div>
+    <div class="panel"><div id="history"></div></div>
   </section>
 
   <section id="tab-count" class="pane hidden">
@@ -277,8 +274,6 @@
 
     <div class="bar">
       <button id="btnInvSave2" class="primary">Сохранить</button>
-      <button id="btnInvReset">Очистить расчёт</button>
-      <button id="btnInvFill" class="primary">Выгрузить данные</button>
     </div>
   </section>
 
@@ -295,18 +290,11 @@
     <h2>Другие ПФ</h2>
     <div id="otherPfList"></div>
 
-    <div class="savebar">
-      <input type="date" id="saveDate">
-      <button id="btnSave" class="primary">Сохранить</button>
-    </div>
     <div class="bar">
       <button id="btnReset">Сбросить</button>
       <button id="btnPrint">Печать отчёта</button>
-      <button id="btnPfExport" class="primary">Выгрузить товары из ПФ</button>
+      <button id="btnPfExport" class="primary">Добавить ПФ в Товары</button>
     </div>
-
-    <h2>Сохранённые подсчёты</h2>
-    <div class="panel"><div id="history"></div></div>
 
     <h2>Итог по товарам</h2>
     <div class="panel"><div id="result"></div></div>
@@ -318,9 +306,13 @@
   </section>
 
   <section id="tab-hist" class="pane hidden">
-    <div class="sub" id="histInfo">Загрузка истории…</div>
-    <div class="bar"><button id="btnHistRefresh">Обновить</button></div>
-    <div id="histList"></div>
+    <h2>Как пользоваться</h2>
+    <div class="panel instr">
+      <p><b>1. Полуфабрикаты.</b> Введи остатки настоек (л) и других ПФ (л/кг). Ниже сразу виден «Итог по товарам» — сколько базовых товаров в них заложено.</p>
+      <p><b>2. Добавить ПФ в Товары.</b> Кнопка «Добавить ПФ в Товары» переносит разложенные товары в список «Товары» и на «Главную» (столбец «из ПФ»). Повторное нажатие обновляет значения, не задваивая.</p>
+      <p><b>3. Главная.</b> Выбери склад и дату, импортируй отчёт остатков (.xlsx) или вводи факт вручную по группам. Расхождения «факт − расчёт» подсвечиваются автоматически.</p>
+      <p><b>4. Сохранение.</b> На «Главной» можно сохранить подсчёт ПФ и загрузить его позже. «Сохранить» в «Товарах» сохраняет данные инвентаризации.</p>
+    </div>
   </section>
 
   <footer>
@@ -561,7 +553,7 @@ const DEFAULT_DICTS = {"Бар":[{"g":"Замороженные овощи, фр
 let INV_GROUPS = [];
 let invRestaurants = [];
 let invRest = "";
-let invState = { counters:{}, fact:{}, calc:{}, name:"", date:"" };
+let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
 let invShowAll = false;
 let invImportMode = "tsv";
 let invSearch = "";
@@ -591,10 +583,10 @@ function invPersistRests(){ invSetJSON(INV_LS + "_rests", invRestaurants); }
 
 function invRestKey(r){ return INV_LS + "_data::" + r; }
 function invLoadState(r){
-  if(!r) return { counters:{}, fact:{}, calc:{}, name:"", date:"" };
+  if(!r) return { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
   const d = invJSON(invRestKey(r), null);
-  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, name:d.name||"", date:d.date||"" };
-  return { counters:{}, fact:{}, calc:{}, name:"", date:"" };
+  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, pfAdd:d.pfAdd||{}, name:d.name||"", date:d.date||"" };
+  return { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
 }
 function invSaveState(){
   if(!invRest) return;
@@ -699,7 +691,7 @@ const diffCells = {};
 function updateDiffByKey(key){
   const cells = diffCells[key];
   if(!cells || !cells.length) return;
-  const f = invState.fact[key] || 0;
+  const f = (invState.fact[key] || 0) + ((invState.pfAdd && invState.pfAdd[key]) || 0);
   const c = invState.calc[key] || 0;
   const d = f - c;
   cells.forEach(td=>{
@@ -757,7 +749,7 @@ function renderGroupsInto(boxId, showDiff){
     if(q && !goods.length) return;
     const det = document.createElement("details");
     det.className = "igrp";
-    const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined);
+    const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined || (invState.pfAdd && invState.pfAdd[goodKey(g.g, gd.n)]));
     det.open = has || !!q;
     const sum = document.createElement("summary");
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
@@ -772,8 +764,8 @@ function renderGroupsInto(boxId, showDiff){
     const tbl = document.createElement("table");
     tbl.className = "goods";
     tbl.innerHTML = showDiff
-      ? '<tr><th class="gn">Товар</th><th>Факт</th><th>±</th></tr>'
-      : '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+      ? '<tr><th class="gn">Товар</th><th>Факт</th><th>из ПФ</th><th>±</th></tr>'
+      : '<tr><th class="gn">Товар</th><th>Факт</th><th>из ПФ</th></tr>';
     goods.forEach((gd)=>{
       const key = goodKey(g.g, gd.n);
       const tr = document.createElement("tr");
@@ -807,7 +799,9 @@ function renderGroupsInto(boxId, showDiff){
       st.append(bm, f, bp);
       tdFact.appendChild(st);
 
-      tr.append(tdName, tdFact);
+      const tdPf = document.createElement("td"); tdPf.className = "num pfadd";
+      tdPf.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "";
+      tr.append(tdName, tdFact, tdPf);
       if(showDiff){
         const tdDiff = document.createElement("td"); tdDiff.className = "diff";
         tr.appendChild(tdDiff);
@@ -837,10 +831,11 @@ function updateInvStats(){
     g.goods.forEach(gd=>{
       total++;
       const key = goodKey(g.g, gd.n);
-      if(invState.fact[key] !== undefined) counted++;
-      const f = invState.fact[key] || 0;
+      const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      if(invState.fact[key] !== undefined || pf > 0) counted++;
+      const f = (invState.fact[key] || 0) + pf;
       const c = invState.calc[key] || 0;
-      if(invState.fact[key] !== undefined && Math.abs(f - c) > 0.0005) diffs++;
+      if((invState.fact[key] !== undefined || pf > 0) && Math.abs(f - c) > 0.0005) diffs++;
     });
   });
   document.getElementById("invTotal").textContent = total;
@@ -856,8 +851,9 @@ function renderInvDiff(){
     if(g.g === "База данных") return;
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
-      const counted = invState.fact[key] !== undefined;
-      const f = counted ? invState.fact[key] : null;
+      const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      const counted = invState.fact[key] !== undefined || pf > 0;
+      const f = counted ? ((invState.fact[key] || 0) + pf) : null;
       const c = invState.calc[key] || 0;
       const d = counted ? (f - c) : null;
       if(!invShowAll && (d === null || Math.abs(d) < 0.0005)) return;
@@ -1107,18 +1103,26 @@ function invExport(){
   toast("Экспортировано");
 }
 
-function exportPf(){
+function addPfToGoods(){
   const c = computeTotals(getInputs());
   const goods = Object.entries(c.totals).map(([t,o])=>({name:t, u:o.u, qty:Math.round(o.v*1000)/1000})).sort((a,b)=>b.qty-a.qty);
-  if(!goods.length){ toast("Введите остаток хотя бы одного ПФ"); return; }
-  const data = { source:"pf", rest: invRest || "", date: invState.date || localToday(), goods: goods };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "tovary-iz-pf-" + (invState.date || localToday()) + ".json";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(a.href);
-  toast("Выгружено " + goods.length + " товаров из ПФ");
+  if(!goods.length){ toast("Сначала введите остатки ПФ"); return; }
+  const nameKey = {};
+  INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ nameKey[gd.n] = goodKey(g.g, gd.n); }); });
+  const pfAdd = {};
+  let skipped = 0;
+  goods.forEach(o=>{
+    const key = nameKey[o.name];
+    if(key) pfAdd[key] = o.qty;
+    else skipped++;
+  });
+  invState.pfAdd = pfAdd;
+  invSaveState();
+  renderInvGroups();
+  updateInvStats();
+  let msg = "Добавлено из ПФ: " + Object.keys(pfAdd).length + " товаров";
+  if(skipped) msg += " · не в складе: " + skipped;
+  toast(msg);
 }
 
 function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
@@ -1294,16 +1298,13 @@ function showHistDetail(d){
 }
 
 function switchTab(tab){
-  document.querySelectorAll(".menu-item").forEach(b=>{
-    const on = b.dataset.tab === tab;
-    b.classList.toggle("active", on);
-    if(on) document.getElementById("menuLabel").textContent = b.textContent;
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.tab === tab);
   });
   document.getElementById("tab-inv").classList.toggle("hidden", tab !== "inv");
   document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
-  document.getElementById("menuBox").classList.remove("open");
 }
 
 function syncInvSetup(){
@@ -1333,7 +1334,6 @@ function initInv(){
   document.getElementById("btnInvSave").addEventListener("click", invSave);
   document.getElementById("btnInvSave2").addEventListener("click", invSave);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
-  document.getElementById("btnInvFill").addEventListener("click", exportForBlank);
   document.getElementById("btnInvImport").addEventListener("click", ()=>{ document.getElementById("jsonFile").click(); });
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
@@ -1349,14 +1349,12 @@ function initInv(){
   });
 }
 
-document.querySelectorAll(".menu-item").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
-document.getElementById("menuToggle").addEventListener("click", (e)=>{ e.stopPropagation(); document.getElementById("menuBox").classList.toggle("open"); });
-document.addEventListener("click", ()=>{ document.getElementById("menuBox").classList.remove("open"); });
+document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
 
 /* ---- инициализация калькулятора ---- */
 document.getElementById("btnReset").addEventListener("click", resetAll);
 document.getElementById("btnPrint").addEventListener("click", doPrint);
-document.getElementById("btnPfExport").addEventListener("click", exportPf);
+document.getElementById("btnPfExport").addEventListener("click", addPfToGoods);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
 document.getElementById("history").addEventListener("click", function(e){
   const b = e.target.closest("button");
@@ -1372,9 +1370,6 @@ renderHist();
 recompute();
 
 initInv();
-
-document.getElementById("btnHistRefresh").addEventListener("click", loadHistory);
-loadHistory();
 
 const btnTop = document.getElementById("btnTop");
 window.addEventListener("scroll", ()=>{ btnTop.classList.toggle("show", window.scrollY > 400); });
