@@ -68,6 +68,7 @@
   .bar button{flex:1;min-width:110px;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .bar button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .bar button.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
   .sbwrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0}
   .sb{height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
@@ -78,6 +79,13 @@
   .sbstatus:empty{display:none}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
      margin-top:8px;overflow:hidden}
+  .diffwrap{border:1px solid var(--line);border-radius:14px;margin:10px 0;background:var(--card);overflow:hidden}
+  .diffwrap summary{display:flex;align-items:center;gap:8px;padding:13px 14px;cursor:pointer;list-style:none;font-weight:600;font-size:15px;color:var(--txt)}
+  .diffwrap summary::-webkit-details-marker{display:none}
+  .diffwrap summary .caret{color:var(--muted);transition:transform .15s;font-size:16px}
+  .diffwrap[open] summary .caret{transform:rotate(90deg)}
+  .diffwrap .bar{margin:0 14px 10px}
+  .diffwrap .panel{margin:0 14px 14px}
   table{width:100%;border-collapse:collapse}
   th,td{padding:10px 14px;text-align:left;font-size:14px}
   th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;
@@ -89,19 +97,10 @@
   td.neg{color:var(--danger)}
   td.pos{color:var(--acc2)}
   .empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
-  .hist{border-bottom:1px solid var(--line)}
+  .hist{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
   .hist:last-child{border-bottom:none}
-  .hist summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none}
-  .hist summary::-webkit-details-marker{display:none}
   .hist .hd{font-weight:600;font-size:14px;min-width:88px}
   .hist .hs{flex:1;font-size:12px;color:var(--muted)}
-  .hist .hbody{padding:2px 14px 12px}
-  .hist .hlist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-  .hist .hrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
-       padding:6px 10px;background:var(--card2);border-radius:8px;font-size:13px}
-  .hist .hn{flex:1}
-  .hist .hv{color:var(--acc2);font-weight:600;white-space:nowrap}
-  .hist .hactions{display:flex;gap:8px}
   .hist button{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
      background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
   .hist .del{width:34px;padding:0;color:var(--danger)}
@@ -265,9 +264,11 @@
     <button id="btnGrpAdd" class="grpadd">+ Добавить группу</button>
     <div id="invGroups"></div>
 
-    <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff">Печать расхождений</button></div>
-    <div class="panel"><div id="invDiffList"></div></div>
+    <details class="diffwrap" id="invDiffWrap" open>
+      <summary><span class="caret">›</span><span>Расхождения (факт − расчёт)</span></summary>
+      <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff">Печать расхождений</button></div>
+      <div class="panel"><div id="invDiffList"></div></div>
+    </details>
 
     <h2>Сохранённые подсчёты ПФ</h2>
     <div class="savebar">
@@ -277,8 +278,8 @@
     <div class="panel"><div id="history"></div></div>
 
     <div class="bar">
-      <button id="btnInvReset">Очистить расчёт данные</button>
-      <button id="btnInvClearFact">Сбросить введённые данные</button>
+      <button id="btnInvReset" class="burgundy">Очистить расчёт данные</button>
+      <button id="btnInvClearFact" class="burgundy">Сбросить введённые данные</button>
     </div>
   </section>
 
@@ -481,37 +482,17 @@ function renderHist(){
     box.innerHTML = '<div class="empty">Сохранений пока нет</div>';
     return;
   }
-  const info = {};
-  INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ info[goodKey(g.g, gd.n)] = {n:gd.n, u:gd.u}; }); });
   let h = '';
   hist.forEach(r=>{
     const c = computeTotals(r.pf || {});
     const fact = r.fact || {};
-    const rows = Object.entries(fact).filter(([k,v])=> v > 0).sort((a,b)=> b[1]-a[1]);
-    h += '<details class="hist">'
-       +   '<summary>'
-       +     '<div class="hd">'+esc(r.date)+'</div>'
-       +     '<div class="hs">Остатков: '+rows.length+' · ПФ: '+c.cnt+' · товаров из ПФ: '+Object.keys(c.totals).length+' · '+fmt(c.vol)+' л</div>'
-       +   '</summary>'
-       +   '<div class="hbody">';
-    if(rows.length){
-      h += '<div class="hlist">';
-      rows.forEach(([k,v])=>{
-        const parts = k.split('||');
-        const name = (info[k] && info[k].n) || parts[1] || k;
-        const u = (info[k] && info[k].u) || '';
-        h += '<div class="hrow"><span class="hn">'+esc(name)+'</span><span class="hv">'+fmt(v)+' '+esc(u)+'</span></div>';
-      });
-      h += '</div>';
-    } else {
-      h += '<div class="empty">Введённых остатков нет</div>';
-    }
-    h += '<div class="hactions">'
+    const nFact = Object.values(fact).filter(v=> v > 0).length;
+    h += '<div class="hist">'
+       +   '<div class="hd">'+esc(r.date)+'</div>'
+       +   '<div class="hs">Остатков: '+nFact+' · ПФ: '+c.cnt+' · товаров из ПФ: '+Object.keys(c.totals).length+' · '+fmt(c.vol)+' л</div>'
        +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
        +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
-       + '</div>'
-       + '</div>'
-       + '</details>';
+       + '</div>';
   });
   box.innerHTML = h;
 }
