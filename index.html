@@ -96,9 +96,11 @@
   .hist .hd{font-weight:600;font-size:14px;min-width:88px}
   .hist .hs{flex:1;font-size:12px;color:var(--muted)}
   .hist .hbody{padding:2px 14px 12px}
-  .hist .hgoods{width:100%;border-collapse:collapse;margin-bottom:8px}
-  .hist .hgoods th,.hist .hgoods td{border:1px solid var(--line);padding:4px 8px;font-size:12px;text-align:left}
-  .hist .hgoods td.num{text-align:right}
+  .hist .hlist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .hist .hrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+       padding:6px 10px;background:var(--card2);border-radius:8px;font-size:13px}
+  .hist .hn{flex:1}
+  .hist .hv{color:var(--acc2);font-weight:600;white-space:nowrap}
   .hist .hactions{display:flex;gap:8px}
   .hist button{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
      background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
@@ -264,7 +266,7 @@
     <div id="invGroups"></div>
 
     <h2>Расхождения (факт − расчёт)</h2>
-    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvReset">Очистить расчёт</button><button id="btnInvPrintDiff">Печать расхождений</button></div>
+    <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff">Печать расхождений</button></div>
     <div class="panel"><div id="invDiffList"></div></div>
 
     <h2>Сохранённые подсчёты ПФ</h2>
@@ -275,6 +277,7 @@
     <div class="panel"><div id="history"></div></div>
 
     <div class="bar">
+      <button id="btnInvReset">Очистить расчёт данные</button>
       <button id="btnInvClearFact">Сбросить введённые данные</button>
     </div>
   </section>
@@ -454,7 +457,7 @@ function saveRecord(){
   const v = getInputs();
   const c = computeTotals(v);
   let hist = getHist().filter(x => x.date !== date);
-  hist.push({date: date, pf: v, n_pf: c.cnt, n_tov: Object.keys(c.totals).length, vol: c.vol});
+  hist.push({date: date, pf: v, fact: Object.assign({}, invState.fact), n_pf: c.cnt, n_tov: Object.keys(c.totals).length, vol: c.vol});
   hist.sort((a,b)=> a.date < b.date ? -1 : 1);
   setHist(hist);
   document.getElementById("saveDate").value = date;
@@ -478,24 +481,30 @@ function renderHist(){
     box.innerHTML = '<div class="empty">Сохранений пока нет</div>';
     return;
   }
+  const info = {};
+  INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ info[goodKey(g.g, gd.n)] = {n:gd.n, u:gd.u}; }); });
   let h = '';
   hist.forEach(r=>{
     const c = computeTotals(r.pf || {});
-    const tov = Object.entries(c.totals).sort((a,b)=>b[1].v-a[1].v);
+    const fact = r.fact || {};
+    const rows = Object.entries(fact).filter(([k,v])=> v > 0).sort((a,b)=> b[1]-a[1]);
     h += '<details class="hist">'
        +   '<summary>'
        +     '<div class="hd">'+esc(r.date)+'</div>'
-       +     '<div class="hs">ПФ: '+c.cnt+' · товаров: '+tov.length+' · '+fmt(c.vol)+' л</div>'
+       +     '<div class="hs">Остатков: '+rows.length+' · ПФ: '+c.cnt+' · товаров из ПФ: '+Object.keys(c.totals).length+' · '+fmt(c.vol)+' л</div>'
        +   '</summary>'
        +   '<div class="hbody">';
-    if(tov.length){
-      h += '<table class="hgoods"><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th></tr>';
-      tov.forEach(([n,o])=>{
-        h += '<tr><td>'+esc(n)+'</td><td class="num">'+fmt(o.v)+'</td><td>'+esc(o.u)+'</td></tr>';
+    if(rows.length){
+      h += '<div class="hlist">';
+      rows.forEach(([k,v])=>{
+        const parts = k.split('||');
+        const name = (info[k] && info[k].n) || parts[1] || k;
+        const u = (info[k] && info[k].u) || '';
+        h += '<div class="hrow"><span class="hn">'+esc(name)+'</span><span class="hv">'+fmt(v)+' '+esc(u)+'</span></div>';
       });
-      h += '</table>';
+      h += '</div>';
     } else {
-      h += '<div class="empty">Товаров нет — введите остатки ПФ</div>';
+      h += '<div class="empty">Введённых остатков нет</div>';
     }
     h += '<div class="hactions">'
        +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
@@ -1454,10 +1463,10 @@ document.getElementById("history").addEventListener("click", function(e){
 document.getElementById("saveDate").value = localToday();
 
 build();
-renderHist();
 recompute();
 
 initInv();
+renderHist();
 
 const btnTop = document.getElementById("btnTop");
 window.addEventListener("scroll", ()=>{ btnTop.classList.toggle("show", window.scrollY > 400); });
