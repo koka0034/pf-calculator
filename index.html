@@ -268,10 +268,7 @@
   .fbtn{flex:1;min-width:72px;height:34px;border-radius:9px;border:1px solid var(--line);
     background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;padding:0 6px}
   .fbtn.active{background:var(--acc);color:#171103;border-color:var(--acc)}
-  /* fast step */
-  .goods .fstep button{width:30px;min-width:30px;font-size:16px}
-  .goods .fstep button.fast{width:33px;min-width:33px;font-size:11.5px;font-weight:700;background:var(--card2)}
-  .goods .fstep input{width:48px;max-width:48px}
+
 </style>
 </head>
 <body>
@@ -369,9 +366,8 @@
     <div class="filters" id="invFilters">
       <button class="fbtn active" data-f="all">Все</button>
       <button class="fbtn" data-f="uncounted">Не посчитано</button>
-      <button class="fbtn" data-f="diff">Расхождения</button>
-      <button class="fbtn" data-f="counted">С остатком</button>
     </div>
+    <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <div id="invCountGroups"></div>
 
     <div class="bar">
@@ -476,6 +472,12 @@ function setQ(i, q){
   const inp = document.querySelector('input[data-i="'+i+'"]');
   inp.value = q ? q : "";
   inp.closest(".pf").classList.toggle("active", q > 0);
+}
+
+function focusNextPf(i){
+  const nx = document.querySelector('input[data-i="'+(i+1)+'"]');
+  if(nx){ nx.focus({ preventScroll: true }); try{ nx.select(); }catch(e){} nx.scrollIntoView({ block: "center", behavior: "auto" }); }
+  else { const cur = document.querySelector('input[data-i="'+i+'"]'); if(cur) cur.blur(); }
 }
 function getInputs(){
   const out = {};
@@ -671,8 +673,9 @@ function buildPfCard(r, i){
   const bm = document.createElement("button");
   bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
   const inp = document.createElement("input");
-  inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
+  inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0"; inp.enterKeyHint = "next";
   inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); persistPfInputs(); });
+  inp.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextPf(i); } });
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
   st.append(bm, inp, bp);
@@ -1019,13 +1022,7 @@ function updateDiffByKey(key){
   });
 }
 
-function repeatOn(btn, fn){
-  let t = null, iv = null;
-  const stop = ()=>{ if(t){ clearTimeout(t); t=null; } if(iv){ clearInterval(iv); iv=null; } };
-  btn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); stop(); fn(); t = setTimeout(()=>{ iv = setInterval(fn, 110); }, 420); });
-  ["pointerup","pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev, stop));
-  btn.addEventListener("contextmenu", (e)=>e.preventDefault());
-}
+
 function countFilter(g, gd){
   if(!invFilterMode || invFilterMode === "all") return true;
   const key = goodKey(g.g, gd.n);
@@ -1163,17 +1160,11 @@ function renderGroupsInto(boxId, showDiff){
         if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
       });
       const st = document.createElement("div"); st.className = "stepper fstep";
-      const step = stepFor(gd.u);
-      const fast = Math.round(step * 10);
-      const bmf = document.createElement("button"); bmf.type = "button"; bmf.className = "fast"; bmf.textContent = "−" + fast; bmf.title = "−" + fast + " " + gd.u;
-      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−"; bm.title = "−" + step + " " + gd.u;
-      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+"; bp.title = "+" + step + " " + gd.u;
-      const bpf = document.createElement("button"); bpf.type = "button"; bpf.className = "fast"; bpf.textContent = "+" + fast; bpf.title = "+" + fast + " " + gd.u;
-      repeatOn(bmf, ()=>stepFact(key, f, -fast));
-      repeatOn(bm, ()=>stepFact(key, f, -step));
-      repeatOn(bp, ()=>stepFact(key, f, step));
-      repeatOn(bpf, ()=>stepFact(key, f, fast));
-      st.append(bmf, bm, f, bp, bpf);
+      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
+      bm.onclick = ()=>stepFact(key, f, -stepFor(gd.u));
+      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
+      bp.onclick = ()=>stepFact(key, f, stepFor(gd.u));
+      st.append(bm, f, bp);
       tdFact.appendChild(st);
 
       tr.appendChild(tdName);
@@ -1311,6 +1302,14 @@ function toggleAllGroups(){
   const anyOpen = dets.some(d => d.open);
   dets.forEach(d => { d.open = !anyOpen; });
   document.getElementById("btnGrpToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
+}
+
+function toggleCountGroups(){
+  const dets = Array.from(document.querySelectorAll("#invCountGroups details.igrp"));
+  if(!dets.length) return;
+  const anyOpen = dets.some(d => d.open);
+  dets.forEach(d => { d.open = !anyOpen; });
+  document.getElementById("btnCountToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
 }
 
 function printDiff(){
@@ -1844,6 +1843,7 @@ function initInv(){
     localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   });
   document.getElementById("btnGrpToggle").addEventListener("click", toggleAllGroups);
+  document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
   document.getElementById("btnAccept").addEventListener("click", sbAccept);
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
