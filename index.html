@@ -184,6 +184,7 @@
     font-size:14px;font-weight:600;cursor:pointer;margin:8px 0}
   .fwbtn.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
   .fwbtn.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
+  .danger{background:#d32f2f !important;color:#fff !important;border-color:#d32f2f !important}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
   .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid #2f6fd0;
@@ -1038,8 +1039,10 @@ async function sbAccept(){
   toast(total ? ("Принято " + total + " значений" + (unmatched.length ? (", не совпало " + unmatched.length) : "") + " с сервера") : "На сервере нет данных для приёма");
 }
 
-async function sbClear(){
-  if(!confirm("Сбросить данные сервера для текущего склада и даты? Все выгруженные результаты будут удалены.")) return;
+async function sbClear(e){
+  twoStep(e.currentTarget, "Сбросить данные сервера", ()=>{ doSbClear(); });
+}
+async function doSbClear(){
   const c = sbClient(); if(!c) return;
   const wk = sbWarehouseKey();
   const date = sbReportDate();
@@ -1330,21 +1333,46 @@ function invSave(){
   invSaveState();
   saveRecord();
 }
-function invReset(){
-  if(!confirm("Очистить все значения «расчёт»?")) return;
-  invState.calc = {};
-  invSaveState();
-  renderInvGroups();
-  updateInvStats();
+function twoStep(btn, label, run){
+  if(!btn){ run(); return; }
+  if(btn.dataset.armed === "1"){
+    btn.dataset.armed = "";
+    btn.textContent = label;
+    btn.classList.remove("danger");
+    clearTimeout(btn._armT);
+    run();
+    return;
+  }
+  btn.dataset.armed = "1";
+  btn.textContent = "Точно сбросить?";
+  btn.classList.add("danger");
+  clearTimeout(btn._armT);
+  btn._armT = setTimeout(()=>{
+    btn.dataset.armed = "";
+    btn.textContent = label;
+    btn.classList.remove("danger");
+  }, 4000);
 }
 
-function invClearFact(){
-  if(!confirm("Сбросить все введённые остатки (факт и добавления из ПФ)?")) return;
-  invState.fact = {};
-  invState.pfAdd = {};
-  invSaveState();
-  renderInvGroups();
-  updateInvStats();
+function invReset(e){
+  twoStep(e.currentTarget, "Очистить расчёт данные", ()=>{
+    invState.calc = {};
+    invSaveState();
+    renderInvGroups();
+    updateInvStats();
+    toast("Расчётные данные очищены");
+  });
+}
+
+function invClearFact(e){
+  twoStep(e.currentTarget, "Сбросить введённые данные", ()=>{
+    invState.fact = {};
+    invState.pfAdd = {};
+    invSaveState();
+    renderInvGroups();
+    updateInvStats();
+    toast("Введённые данные сброшены");
+  });
 }
 
 function toggleAllGroups(){
