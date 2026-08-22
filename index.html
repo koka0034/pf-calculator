@@ -275,7 +275,13 @@
 
   .imphd{text-align:center;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);margin:16px 0 8px}
   .goods .fstep button,.stepper button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
-  .goods .fstep button.nxt,.stepper button.nxt{color:var(--acc)}
+
+  .floatnext{position:absolute;right:10px;width:46px;height:46px;border-radius:50%;
+    background:var(--acc);color:#171103;font-size:20px;font-weight:700;
+    border:1px solid var(--acc);box-shadow:0 4px 14px rgba(0,0,0,.5);
+    z-index:55;display:none;align-items:center;justify-content:center;
+    cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .floatnext.show{display:flex}
 </style>
 </head>
 <body>
@@ -433,6 +439,7 @@
 <input type="file" id="blankFile" accept=".xls,.xlsx">
 <button id="btnHome" class="tohome" title="На главную">🏠</button>
 <button id="btnTop" class="totop" title="Наверх">↑</button>
+<button id="btnFloatNext" class="floatnext" title="Далее">→</button>
 
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
@@ -483,24 +490,7 @@ function focusNextPf(i){
   else { const cur = document.querySelector('input[data-i="'+i+'"]'); if(cur) cur.blur(); }
 }
 
-function focusPrevPf(i){
-  const nx = document.querySelector('input[data-i="'+(i-1)+'"]');
-  if(nx){ nx.focus({ preventScroll: true }); try{ nx.select(); }catch(e){} nx.scrollIntoView({ block: "center", behavior: "auto" }); }
-}
 
-function bindSwipe(el, onUp, onDown){
-  let sy = null, sx = null;
-  el.addEventListener("touchstart", (e)=>{ if(e.touches.length === 1){ sy = e.touches[0].clientY; sx = e.touches[0].clientX; } }, {passive:true});
-  el.addEventListener("touchend", (e)=>{
-    if(sy === null) return;
-    const t = e.changedTouches[0];
-    const dy = t.clientY - sy;
-    const dx = t.clientX - sx;
-    sy = null; sx = null;
-    if(Math.abs(dy) < 45 || Math.abs(dy) < Math.abs(dx)) return;
-    if(dy < 0) onUp(); else onDown();
-  }, {passive:true});
-}
 function getInputs(){
   const out = {};
   ALL_PF.forEach((r,i)=>{ const q = getQ(i); if(q > 0) out[r.n] = q; });
@@ -706,12 +696,9 @@ function buildPfCard(r, i){
   inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0"; inp.enterKeyHint = "next";
   inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); persistPfInputs(); });
   inp.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextPf(i); } });
-  bindSwipe(inp, ()=>focusNextPf(i), ()=>focusPrevPf(i));
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; repeatOn(bp, ()=>addStep(i, 0.1));
-  const bnx = document.createElement("button");
-  bnx.textContent = "→"; bnx.type = "button"; bnx.className = "nxt"; bnx.title = "Далее"; bnx.onclick = ()=>focusNextPf(i);
-  st.append(bm, inp, bp, bnx);
+  st.append(bm, inp, bp);
   const u = document.createElement("div");
   u.className = "u"; u.textContent = r.u;
   card.append(nm, st, u);
@@ -1094,18 +1081,7 @@ function focusNextFact(cur){
   } else { cur.blur(); }
 }
 
-function focusPrevFact(cur){
-  const pane = cur.closest(".pane") || document;
-  const all = Array.from(pane.querySelectorAll("input.factinp"));
-  const i = all.indexOf(cur);
-  if(i > 0){
-    const nx = all[i-1];
-    const det = nx.closest("details"); if(det) det.open = true;
-    nx.focus({ preventScroll: true });
-    try{ nx.select(); }catch(e){}
-    nx.scrollIntoView({ block: "center", behavior: "auto" });
-  }
-}
+
 
 function renderGroupsInto(boxId, showDiff){
   const box = document.getElementById(boxId);
@@ -1176,15 +1152,12 @@ function renderGroupsInto(boxId, showDiff){
       f.addEventListener("keydown", (e)=>{
         if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
       });
-      bindSwipe(f, ()=>focusNextFact(f), ()=>focusPrevFact(f));
       const st = document.createElement("div"); st.className = "stepper fstep";
       const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
       repeatOn(bm, ()=>stepFact(key, f, -stepFor(gd.u)));
       const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
       repeatOn(bp, ()=>stepFact(key, f, stepFor(gd.u)));
-      const bnx = document.createElement("button"); bnx.type = "button"; bnx.className = "nxt"; bnx.textContent = "→"; bnx.title = "Далее";
-      bnx.onclick = ()=>focusNextFact(f);
-      st.append(bm, f, bp, bnx);
+      st.append(bm, f, bp);
       tdFact.appendChild(st);
 
       tr.appendChild(tdName);
@@ -1919,6 +1892,46 @@ window.addEventListener("scroll", ()=>{
 });
 btnTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
 btnHome.addEventListener("click", ()=>{ switchTab("inv"); window.scrollTo({top:0, behavior:"smooth"}); });
+
+/* floating next-cell button */
+let lastFactInput = null;
+function floatNextTarget(cur){
+  if(cur.classList && cur.classList.contains("factinp")){
+    const pane = cur.closest(".pane") || document;
+    const all = Array.from(pane.querySelectorAll("input.factinp"));
+    const idx = all.indexOf(cur);
+    return (idx >= 0 && idx + 1 < all.length) ? all[idx+1] : null;
+  }
+  if(cur.dataset && cur.dataset.i !== undefined){
+    return document.querySelector('input[data-i="' + (Number(cur.dataset.i) + 1) + '"]');
+  }
+  return null;
+}
+function floatNextShow(cur){
+  const btn = document.getElementById("btnFloatNext");
+  if(!btn) return;
+  const nx = floatNextTarget(cur);
+  if(!nx){ btn.classList.remove("show"); return; }
+  const r = nx.getBoundingClientRect();
+  btn.style.top = (r.top + window.scrollY + r.height/2 - 23) + "px";
+  btn.classList.add("show");
+}
+function floatNextHide(){ const b = document.getElementById("btnFloatNext"); if(b) b.classList.remove("show"); }
+
+document.addEventListener("focusin", (e)=>{
+  const t = e.target;
+  if(t && t.matches && t.matches("input.factinp, input[data-i]")){ lastFactInput = t; floatNextShow(t); }
+});
+document.addEventListener("focusout", (e)=>{
+  const rt = e.relatedTarget;
+  if(!rt || !(rt.matches && rt.matches("input.factinp, input[data-i]"))) floatNextHide();
+});
+document.getElementById("btnFloatNext").addEventListener("pointerdown", (e)=>{
+  e.preventDefault();
+  if(!lastFactInput) return;
+  if(lastFactInput.classList.contains("factinp")) focusNextFact(lastFactInput);
+  else if(lastFactInput.dataset && lastFactInput.dataset.i !== undefined) focusNextPf(Number(lastFactInput.dataset.i));
+});
 </script>
 </body>
 </html>
