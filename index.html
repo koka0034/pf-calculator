@@ -164,7 +164,7 @@
   .goods .fstep{display:flex;align-items:center;justify-content:center;gap:4px}
   .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
   .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
-  .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px}
+  .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px;white-space:nowrap}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
   .diff.zero{color:var(--muted)}
@@ -484,7 +484,7 @@ function fmt(v){
 function fmtDiff(d){
   if(Math.abs(d) < 0.0005) return "0";
   const r = Math.round(d * 1000) / 1000;
-  const s = (Object.is(r, -0) ? 0 : r).toLocaleString("ru-RU", {maximumFractionDigits:3});
+  const s = (Object.is(r, -0) ? 0 : r).toLocaleString("ru-RU", {maximumFractionDigits:3, useGrouping:false});
   return r > 0 ? "+" + s : s;
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
