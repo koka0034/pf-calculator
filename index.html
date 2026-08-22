@@ -432,6 +432,9 @@ function getInputs(){
 function setAllInputs(pf){
   ALL_PF.forEach((r,i)=>{ setQ(i, pf[r.n] || 0); });
 }
+const PF_LS = "pfcalc_pf_inputs";
+function persistPfInputs(){ try{ localStorage.setItem(PF_LS, JSON.stringify(getInputs())); }catch(e){} }
+function loadPfInputs(){ try{ const d = JSON.parse(localStorage.getItem(PF_LS) || "null"); if(d && typeof d === "object") setAllInputs(d); }catch(e){} }
 
 function computeTotals(v){
   const totals = {};
@@ -458,6 +461,7 @@ function addStep(i, d){
   q = Math.max(0, Math.round((q + d) * 100) / 100);
   setQ(i, q);
   recompute();
+  persistPfInputs();
 }
 
 function recompute(){
@@ -537,6 +541,7 @@ function loadRecord(date){
   setAllInputs(r.pf || {});
   applyFact(r.fact || {});
   recompute();
+  persistPfInputs();
   renderInvDiff();
 }
 function delRecord(date){
@@ -596,6 +601,7 @@ function doPrint(){
 function resetAll(){
   ALL_PF.forEach((r,i)=>setQ(i, 0));
   recompute();
+  persistPfInputs();
 }
 
 const OTHER_PF = [{"n":"Сироп Лемонграсс","u":"л","items":[["Лемонграсс (лимонная трава)","кг",0.0875],["Сахар-песок Aro","кг",0.75]]},{"n":"Лаймовый суперджус","u":"л","items":[["Лайм свежий","кг",0.436047],["Кислота лимонная","кг",0.023256],["Яблочная кислота","кг",0.009302]]},{"n":"Малиновая сырная пенка","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.280899],["Сливки растительные CREAMART 20%","л",0.606742],["Сироп малина ODK","л",0.044944],["Гарниш Малина WTS?!","кг",0.022472],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.005618],["Сахар-песок Aro","кг",0.037454],["Свекла сушеная натуральная (порошок)","кг",0.004494]]},{"n":"Грильяж","u":"кг","items":[["Сахар-песок Aro","кг",1],["Орех Грецкий","кг",0.25]]},{"n":"Чай каркаде (гибискус)","u":"л","items":[["Каркаде напиток чайный","кг",0.021053]]},{"n":"Крем тирамису","u":"кг","items":[["Сыр Маскарпоне PRETTO пл/с УМАЛАТ","кг",0.3125],["Сливки растительные CREAMART 20%","л",0.675],["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.003125],["Сахар-песок Aro","кг",0.020834]]},{"n":"Чай липа","u":"л","items":[["Мед цветочный натуральный ГОСТ","кг",0.04],["Липа сушеная","кг",0.025]]},{"n":"Чай жасмин","u":"л","items":[["ЧАЙ пакет жасмин Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Ананасовая пена","u":"л","items":[["Нектар ананас-яблоко 1л","л",0.888889],["Пюре маракуйя ФК","л",0.111111],["Ксантановая камедь","кг",0.008889],["Альбумин","кг",0.006667],["Баллончики д/сифона д/сливок","шт",2.222222]]},{"n":"Ванильный сахар","u":"кг","items":[["Ароматизатор Dr.Bakers пищевой ванилин - интенсив (бар)","кг",0.125],["Сахар-песок Aro","кг",0.833333]]},{"n":"Морс 2,5 л","u":"л","items":[["Морс Малиновый ФК","л",0.4]]},{"n":"Чай бергамот (эрл грей)","u":"л","items":[["ЧАЙ пакет эрл грей Newby Ньюби (Саше) шт.","шт",4]]},{"n":"Сахарный сироп","u":"л","items":[["Сахар-песок Aro","кг",0.75]]},{"n":"Взбитые сливки белые","u":"кг","items":[["Сливки растительные CREAMART 20%","л",1.086957],["Баллончики д/сифона д/сливок","шт",4.347826]]}];
@@ -613,7 +619,7 @@ function buildPfCard(r, i){
   bm.textContent = "−"; bm.type = "button"; bm.onclick = ()=>addStep(i, -0.1);
   const inp = document.createElement("input");
   inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0";
-  inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); });
+  inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); persistPfInputs(); });
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; bp.onclick = ()=>addStep(i, 0.1);
   st.append(bm, inp, bp);
@@ -685,7 +691,6 @@ function invSaveState(){
 const SB_URL = "https://gxrasjhpkjdmcndbknpi.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4cmFzamhwa2pkbWNuZGJrbnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMTk5NDIsImV4cCI6MjEwMjc5NTk0Mn0.96bodWC7HiY_2iTYQD8aR5Neo2q9LlwULNjQIrDeP9w";
 let sb = null;
-const PF_PREFIX = "@pf@||";
 
 function sbSetStatus(msg, ok){
   const el = document.getElementById("sbStatus");
@@ -703,15 +708,23 @@ function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || "")
 
 function sbSnapshot(){
   const o = {};
+  const add = function(k, v){
+    const n = toNum(v);
+    if(isNaN(n)) return;
+    const cur = (o[k] !== undefined) ? toNum(o[k]) : 0;
+    o[k] = Math.round((cur + n)*1000)/1000;
+  };
   for(const k in invState.fact){
     const v = invState.fact[k];
     if(v === undefined || v === null || v === "") continue;
-    const n = toNum(v);
-    if(!isNaN(n)) o[k] = Math.round(n*1000)/1000;
+    add(k, v);
   }
-  const pf = getInputs();
-  for(const k in pf){
-    o[PF_PREFIX + k] = Math.round(pf[k]*1000)/1000;
+  if(invState.pfAdd){
+    for(const k in invState.pfAdd){
+      const v = invState.pfAdd[k];
+      if(v === undefined || v === null || v === "") continue;
+      add(k, v);
+    }
   }
   return o;
 }
@@ -769,22 +782,6 @@ function applyFact(fact){
   renderInvDiff();
 }
 
-function applyPfAdd(pf){
-  const active = document.activeElement;
-  const activeIsPf = !!(active && active.matches && active.matches('input[data-i]'));
-  ALL_PF.forEach((r, i)=>{
-    const inp = document.querySelector('input[data-i="'+i+'"]');
-    if(!inp) return;
-    if(activeIsPf && inp === active) return;
-    const add = (pf && typeof pf === "object" && pf[r.n] !== undefined && pf[r.n] !== null) ? Number(pf[r.n]) : 0;
-    if(add){
-      const cur = getQ(i);
-      setQ(i, Math.round((cur + add)*1000)/1000);
-    }
-  });
-  recompute();
-}
-
 async function sbAccept(){
   const c = sbClient(); if(!c) return;
   const wk = sbWarehouseKey();
@@ -793,19 +790,14 @@ async function sbAccept(){
   const { data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date });
   if(error){ sbSetStatus("Ошибка приёма: " + error.message, false); toast("Ошибка приёма"); return; }
   const res = (data && typeof data === "object") ? data : {};
-  const addFact = {};
-  const addPf = {};
   for(const k in res){
     const v = toNum(res[k]);
     if(isNaN(v)) continue;
-    if(k.indexOf(PF_PREFIX) === 0) addPf[k.slice(PF_PREFIX.length)] = v;
-    else addFact[k] = v;
-  }
-  for(const k in addFact){
     const cur = (invState.fact[k] !== undefined) ? toNum(invState.fact[k]) : 0;
-    invState.fact[k] = Math.round((cur + addFact[k])*1000)/1000;
+    const next = Math.round((cur + v)*1000)/1000;
+    if(next > 0) invState.fact[k] = next;
+    else delete invState.fact[k];
   }
-  if(Object.keys(addPf).length) applyPfAdd(addPf);
   invSaveState();
   sbSaveLast(sbSnapshot());
   renderInvGroups(); updateInvStats(); renderInvDiff();
@@ -1668,6 +1660,7 @@ document.getElementById("history").addEventListener("click", function(e){
 
 
 build();
+loadPfInputs();
 recompute();
 
 initInv();
