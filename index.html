@@ -180,7 +180,7 @@
   .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
        background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
   .blankimp:hover{border-color:var(--acc);color:var(--acc)}
-  .totop{position:fixed;right:16px;bottom:calc(18px + 10vh);width:46px;height:46px;border-radius:50%;
+  .totop{position:fixed;right:16px;bottom:calc(18px + 5vh);width:46px;height:46px;border-radius:50%;
        border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
        box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
@@ -482,6 +482,25 @@ function focusNextPf(i){
   if(nx){ nx.focus({ preventScroll: true }); try{ nx.select(); }catch(e){} nx.scrollIntoView({ block: "center", behavior: "auto" }); }
   else { const cur = document.querySelector('input[data-i="'+i+'"]'); if(cur) cur.blur(); }
 }
+
+function focusPrevPf(i){
+  const nx = document.querySelector('input[data-i="'+(i-1)+'"]');
+  if(nx){ nx.focus({ preventScroll: true }); try{ nx.select(); }catch(e){} nx.scrollIntoView({ block: "center", behavior: "auto" }); }
+}
+
+function bindSwipe(el, onUp, onDown){
+  let sy = null, sx = null;
+  el.addEventListener("touchstart", (e)=>{ if(e.touches.length === 1){ sy = e.touches[0].clientY; sx = e.touches[0].clientX; } }, {passive:true});
+  el.addEventListener("touchend", (e)=>{
+    if(sy === null) return;
+    const t = e.changedTouches[0];
+    const dy = t.clientY - sy;
+    const dx = t.clientX - sx;
+    sy = null; sx = null;
+    if(Math.abs(dy) < 45 || Math.abs(dy) < Math.abs(dx)) return;
+    if(dy < 0) onUp(); else onDown();
+  }, {passive:true});
+}
 function getInputs(){
   const out = {};
   ALL_PF.forEach((r,i)=>{ const q = getQ(i); if(q > 0) out[r.n] = q; });
@@ -687,6 +706,7 @@ function buildPfCard(r, i){
   inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0"; inp.enterKeyHint = "next";
   inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); persistPfInputs(); });
   inp.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextPf(i); } });
+  bindSwipe(inp, ()=>focusNextPf(i), ()=>focusPrevPf(i));
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; repeatOn(bp, ()=>addStep(i, 0.1));
   const bnx = document.createElement("button");
@@ -1074,6 +1094,19 @@ function focusNextFact(cur){
   } else { cur.blur(); }
 }
 
+function focusPrevFact(cur){
+  const pane = cur.closest(".pane") || document;
+  const all = Array.from(pane.querySelectorAll("input.factinp"));
+  const i = all.indexOf(cur);
+  if(i > 0){
+    const nx = all[i-1];
+    const det = nx.closest("details"); if(det) det.open = true;
+    nx.focus({ preventScroll: true });
+    try{ nx.select(); }catch(e){}
+    nx.scrollIntoView({ block: "center", behavior: "auto" });
+  }
+}
+
 function renderGroupsInto(boxId, showDiff){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -1143,6 +1176,7 @@ function renderGroupsInto(boxId, showDiff){
       f.addEventListener("keydown", (e)=>{
         if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
       });
+      bindSwipe(f, ()=>focusNextFact(f), ()=>focusPrevFact(f));
       const st = document.createElement("div"); st.className = "stepper fstep";
       const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
       repeatOn(bm, ()=>stepFact(key, f, -stepFor(gd.u)));
