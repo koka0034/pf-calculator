@@ -707,13 +707,37 @@ function sbClient(){
 function sbReportDate(){ return (document.getElementById("invDate").value || "").trim(); }
 function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || ""); }
 
+const PF_PREFIX = "@pf@||";
+function buildNameKey(){
+  const m = {};
+  INV_GROUPS.forEach(function(g){ g.goods.forEach(function(gd){ m[canon(gd.n)] = goodKey(g.g, gd.n); }); });
+  return m;
+}
+function buildPfIndex(){
+  const m = {};
+  ALL_PF.forEach(function(r, i){ m[canon(r.n)] = i; });
+  return m;
+}
+
 function sbSnapshot(){
   const o = {};
+  const add = function(k, v){
+    const n = toNum(v);
+    if(isNaN(n)) return;
+    const cur = (o[k] !== undefined) ? toNum(o[k]) : 0;
+    o[k] = Math.round((cur + n)*1000)/1000;
+  };
   for(const k in invState.fact){
     const v = invState.fact[k];
     if(v === undefined || v === null || v === "") continue;
-    const n = toNum(v);
-    if(!isNaN(n)) o[k] = Math.round(n*1000)/1000;
+    const name = k.split("||").slice(1).join("||");
+    const cname = canon(name);
+    if(cname) add(cname, v);
+  }
+  const pf = getInputs();
+  for(const k in pf){
+    const cname = canon(k);
+    if(cname) add(PF_PREFIX + cname, pf[k]);
   }
   return o;
 }
@@ -765,19 +789,45 @@ async function sbAccept(){
   const { data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date });
   if(error){ sbSetStatus("Ошибка приёма: " + error.message, false); toast("Ошибка приёма"); return; }
   const res = (data && typeof data === "object") ? data : {};
+  const nameKey = buildNameKey();
+  const pfIndex = buildPfIndex();
+  const addFact = {};
+  const addPf = {};
+  const unmatched = [];
   for(const k in res){
     const v = toNum(res[k]);
     if(isNaN(v)) continue;
-    const cur = (invState.fact[k] !== undefined) ? toNum(invState.fact[k]) : 0;
-    const next = Math.round((cur + v)*1000)/1000;
-    if(next > 0) invState.fact[k] = next;
-    else delete invState.fact[k];
+    if(k.indexOf(PF_PREFIX) === 0){
+      const i = pfIndex[k.slice(PF_PREFIX.length)];
+      if(i !== undefined) addPf[i] = (addPf[i] || 0) + v;
+      else unmatched.push(k.slice(PF_PREFIX.length));
+    } else {
+      const key = nameKey[k];
+      if(key) addFact[key] = (addFact[key] || 0) + v;
+      else unmatched.push(k);
+    }
   }
+  for(const key in addFact){
+    const cur = (invState.fact[key] !== undefined) ? toNum(invState.fact[key]) : 0;
+    const next = Math.round((cur + addFact[key])*1000)/1000;
+    if(next > 0) invState.fact[key] = next;
+    else delete invState.fact[key];
+  }
+  let pfChanged = false;
+  for(const i in addPf){
+    const idx = Number(i);
+    const cur = getQ(idx);
+    setQ(idx, Math.round((cur + addPf[i])*1000)/1000);
+    pfChanged = true;
+  }
+  if(pfChanged){ recompute(); persistPfInputs(); }
   invSaveState();
   renderInvGroups(); updateInvStats(); renderInvDiff();
   const total = Object.keys(res).length;
-  sbSetStatus(total ? ("Принято " + total + " знач.") : "На сервере нет данных", true);
-  toast(total ? ("Принято " + total + " значений с сервера") : "На сервере нет данных для приёма");
+  const msg = total ? ("Принято " + total + " знач.") : "На сервере нет данных";
+  if(unmatched.length) msg += " · не совпало " + unmatched.length;
+  sbSetStatus(msg, true);
+  toast(total ? ("Принято " + total + " значений" + (unmatched.length ? (", не совпало " + unmatched.length) : "") + " с сервера") : "На сервере нет данных для приёма");
 }
 
 async function sbClear(){
