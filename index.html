@@ -251,6 +251,27 @@
     text-transform:uppercase;letter-spacing:3px}
   .sesscode::placeholder{letter-spacing:1px;text-transform:none}
   .sessbox p.sub{margin:8px 0 0}
+
+  /* progress */
+  .progwrap{margin:12px 0 4px}
+  .prog-label{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);margin-bottom:5px}
+  .prog-label b{font-size:13px;font-weight:700}
+  .progbar{height:8px;border-radius:5px;background:var(--card2);overflow:hidden}
+  .progfill{height:100%;width:0;background:var(--acc2);border-radius:5px;transition:width .2s}
+  .igrp summary{flex-wrap:wrap}
+  .gcnt{white-space:nowrap}
+  .gcnt.done{color:var(--acc2)}
+  .gbar{flex-basis:100%;height:5px;border-radius:4px;background:var(--card2);overflow:hidden;margin-top:2px}
+  .gfill{height:100%;width:0;background:var(--acc2);border-radius:4px;transition:width .2s}
+  /* filters */
+  .filters{display:flex;gap:6px;margin:4px 0 10px;flex-wrap:wrap}
+  .fbtn{flex:1;min-width:72px;height:34px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;padding:0 6px}
+  .fbtn.active{background:var(--acc);color:#171103;border-color:var(--acc)}
+  /* fast step */
+  .goods .fstep button{width:30px;min-width:30px;font-size:16px}
+  .goods .fstep button.fast{width:33px;min-width:33px;font-size:11.5px;font-weight:700;background:var(--card2)}
+  .goods .fstep input{width:48px;max-width:48px}
 </style>
 </head>
 <body>
@@ -271,7 +292,11 @@
     <div class="stats">
       <div class="stat"><b id="invTotal">0</b><span>товаров</span></div>
       <div class="stat"><b id="invCounted">0</b><span>посчитано</span></div>
-      <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
+            <div class="stat"><b id="invDiff">0</b><span>расхождений</span></div>
+    </div>
+    <div class="progwrap">
+      <div class="prog-label"><span>Прогресс счёта</span><b id="progPct">0%</b></div>
+      <div class="progbar"><div class="progfill" id="progFill"></div></div>
     </div>
 
     <div class="inv-top">
@@ -320,7 +345,7 @@
     </div>
     <div class="panel"><div id="history"></div></div>
 
-    <h2 class="h2big">Список товаров для подсчёта</h2>
+    <h2 class="h2big">Сверка остатков</h2>
     <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
     <div id="invGroups"></div>
 
@@ -339,7 +364,14 @@
   </section>
 
   <section id="tab-count" class="pane hidden">
+    <h2 class="h2big">Подсчёт товаров</h2>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
+    <div class="filters" id="invFilters">
+      <button class="fbtn active" data-f="all">Все</button>
+      <button class="fbtn" data-f="uncounted">Не посчитано</button>
+      <button class="fbtn" data-f="diff">Расхождения</button>
+      <button class="fbtn" data-f="counted">С остатком</button>
+    </div>
     <div id="invCountGroups"></div>
 
     <div class="bar">
@@ -670,6 +702,7 @@ let invRest = "";
 let invRestaurant = "";
 let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
 let invShowAll = false;
+let invFilterMode = "all";
 let invImportMode = "tsv";
 let invSearch = "";
 
@@ -986,6 +1019,41 @@ function updateDiffByKey(key){
   });
 }
 
+function repeatOn(btn, fn){
+  let t = null, iv = null;
+  const stop = ()=>{ if(t){ clearTimeout(t); t=null; } if(iv){ clearInterval(iv); iv=null; } };
+  btn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); stop(); fn(); t = setTimeout(()=>{ iv = setInterval(fn, 110); }, 420); });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev, stop));
+  btn.addEventListener("contextmenu", (e)=>e.preventDefault());
+}
+function countFilter(g, gd){
+  if(!invFilterMode || invFilterMode === "all") return true;
+  const key = goodKey(g.g, gd.n);
+  const fact = invState.fact[key];
+  const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+  const counted = fact !== undefined || pf > 0;
+  if(invFilterMode === "uncounted") return !counted;
+  if(invFilterMode === "counted") return counted;
+  if(invFilterMode === "diff"){
+    if(!counted) return false;
+    const f = (fact || 0) + pf;
+    const c = invState.calc[key] || 0;
+    return Math.abs(f - c) > 0.0005;
+  }
+  return true;
+}
+function wireInvFilters(){
+  const box = document.getElementById("invFilters");
+  if(!box) return;
+  box.querySelectorAll(".fbtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      invFilterMode = btn.dataset.f;
+      box.querySelectorAll(".fbtn").forEach(b=>b.classList.toggle("active", b === btn));
+      renderInvGroups();
+    });
+  });
+}
+
 function stepFor(u){ return u === "шт" ? 1 : 0.1; }
 function stepFact(key, inp, d){
   const cur = invState.fact[key] !== undefined ? invState.fact[key] : 0;
@@ -1031,12 +1099,14 @@ function renderGroupsInto(boxId, showDiff){
   const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
     if(g.g === "База данных" || g.g === "Импортированные") return;
-    const goods = q ? g.goods.filter(gd => canon(gd.n).includes(q) || canon(g.g).includes(q)) : g.goods;
-    if(q && !goods.length) return;
+    let goods = q ? g.goods.filter(gd => canon(gd.n).includes(q) || canon(g.g).includes(q)) : g.goods;
+    if(boxId === "invCountGroups") goods = goods.filter(gd => countFilter(g, gd));
+    if(!goods.length) return;
     const det = document.createElement("details");
     det.className = "igrp";
     const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined || (invState.pfAdd && invState.pfAdd[goodKey(g.g, gd.n)]));
-    det.open = has || !!q;
+    const filtering = (boxId === "invCountGroups") && invFilterMode && invFilterMode !== "all";
+    det.open = has || !!q || filtering;
     const sum = document.createElement("summary");
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
     const gnm = document.createElement("span"); gnm.className="gnm"; gnm.textContent = g.g;
@@ -1047,8 +1117,14 @@ function renderGroupsInto(boxId, showDiff){
       const k = goodKey(g.g, gd.n);
       if(invState.fact[k] !== undefined || (invState.pfAdd && invState.pfAdd[k])) gCounted++;
     });
-    gcnt.textContent = gCounted + " из " + gTotal + " поз.";
-    sum.append(caret, gnm, gcnt);
+    const gpct = gTotal ? Math.round(gCounted/gTotal*100) : 0;
+    gcnt.textContent = gCounted + "/" + gTotal + " · " + gpct + "%";
+    if(gCounted === gTotal && gTotal) gcnt.classList.add("done");
+    const gbar = document.createElement("div"); gbar.className = "gbar";
+    const gfill = document.createElement("div"); gfill.className = "gfill";
+    gfill.style.width = gpct + "%";
+    gbar.appendChild(gfill);
+    sum.append(caret, gnm, gcnt, gbar);
     det.appendChild(sum);
 
     const body = document.createElement("div");
@@ -1087,11 +1163,17 @@ function renderGroupsInto(boxId, showDiff){
         if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
       });
       const st = document.createElement("div"); st.className = "stepper fstep";
-      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
-      bm.onclick = ()=>stepFact(key, f, -stepFor(gd.u));
-      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
-      bp.onclick = ()=>stepFact(key, f, stepFor(gd.u));
-      st.append(bm, f, bp);
+      const step = stepFor(gd.u);
+      const fast = Math.round(step * 10);
+      const bmf = document.createElement("button"); bmf.type = "button"; bmf.className = "fast"; bmf.textContent = "−" + fast; bmf.title = "−" + fast + " " + gd.u;
+      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−"; bm.title = "−" + step + " " + gd.u;
+      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+"; bp.title = "+" + step + " " + gd.u;
+      const bpf = document.createElement("button"); bpf.type = "button"; bpf.className = "fast"; bpf.textContent = "+" + fast; bpf.title = "+" + fast + " " + gd.u;
+      repeatOn(bmf, ()=>stepFact(key, f, -fast));
+      repeatOn(bm, ()=>stepFact(key, f, -step));
+      repeatOn(bp, ()=>stepFact(key, f, step));
+      repeatOn(bpf, ()=>stepFact(key, f, fast));
+      st.append(bmf, bm, f, bp, bpf);
       tdFact.appendChild(st);
 
       tr.appendChild(tdName);
@@ -1138,6 +1220,11 @@ function updateInvStats(){
   document.getElementById("invTotal").textContent = total;
   document.getElementById("invCounted").textContent = counted;
   document.getElementById("invDiff").textContent = diffs;
+  const pct = total ? Math.round(counted/total*100) : 0;
+  const pctEl = document.getElementById("progPct");
+  const fillEl = document.getElementById("progFill");
+  if(pctEl) pctEl.textContent = pct + "%";
+  if(fillEl) fillEl.style.width = pct + "%";
   renderInvDiff();
 }
 
@@ -1771,6 +1858,7 @@ document.getElementById("btnInvClearFact").addEventListener("click", invClearFac
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
   document.getElementById("invDate").addEventListener("change", (e)=>{ invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
+  wireInvFilters();
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
     document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: только расхождения" : "Показать: все";
