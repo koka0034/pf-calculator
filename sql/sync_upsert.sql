@@ -1,5 +1,5 @@
--- Синхронизация инвентаризации: per-device REPLACE + суммарный приём (drain).
--- Запустить целиком в Supabase SQL Editor.
+-- Синхронизация инвентаризации: per-device REPLACE + суммарный приём (drain) + сброс.
+-- Запустить целиком в Supabase SQL Editor (идемпотентно).
 
 -- 1) колонка для идентификатора устройства
 alter table public.inventory_reports add column if not exists device_id text;
@@ -52,7 +52,24 @@ begin
 end;
 $$;
 
--- 6) права + убрать устаревшую функцию
+-- 6) сброс: удаляет все вклады для склада+даты без приёма, возвращает число удалённых строк
+create or replace function public.clear_fact(p_warehouse text, p_report_date text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare n integer;
+begin
+  delete from inventory_reports
+  where warehouse = p_warehouse and report_date = p_report_date;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+-- 7) права + убрать устаревшую функцию
 grant execute on function public.upsert_fact(text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.drain_fact(text, text) to anon, authenticated;
+grant execute on function public.clear_fact(text, text) to anon, authenticated;
 drop function if exists public.accumulate_fact(text, text, jsonb);

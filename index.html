@@ -273,6 +273,7 @@
       <input type="date" id="invDate">
       <div class="sbwrap">
         <button id="btnAccept" class="sb">Принять результаты с сервера</button>
+        <button id="btnClearServer" class="burgundy">Сбросить данные сервера</button>
         <span class="sbstatus" id="sbStatus"></span>
       </div>
       <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
@@ -777,6 +778,19 @@ async function sbAccept(){
   const total = Object.keys(res).length;
   sbSetStatus(total ? ("Принято " + total + " знач.") : "На сервере нет данных", true);
   toast(total ? ("Принято " + total + " значений с сервера") : "На сервере нет данных для приёма");
+}
+
+async function sbClear(){
+  if(!confirm("Сбросить данные сервера для текущего склада и даты? Все выгруженные результаты будут удалены.")) return;
+  const c = sbClient(); if(!c) return;
+  const wk = sbWarehouseKey();
+  const date = sbReportDate();
+  sbSetStatus("Очистка…", true);
+  const { data, error } = await c.rpc("clear_fact", { p_warehouse: wk, p_report_date: date });
+  if(error){ sbSetStatus("Ошибка очистки: " + error.message, false); toast("Ошибка очистки"); return; }
+  const n = (typeof data === "number") ? data : 0;
+  sbSetStatus(n ? ("Очищено " + n + " зап.") : "Сервер уже пуст", true);
+  toast(n ? ("Очищено " + n + " записей с сервера") : "На сервере нет данных");
 }
 
 let toastTimer = null;
@@ -1599,6 +1613,7 @@ function initInv(){
   });
   document.getElementById("btnGrpToggle").addEventListener("click", toggleAllGroups);
   document.getElementById("btnAccept").addEventListener("click", sbAccept);
+  document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnInvSave2").addEventListener("click", saveAndUpload);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
