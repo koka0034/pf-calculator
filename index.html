@@ -265,8 +265,15 @@
     text-transform:uppercase;letter-spacing:3px}
   .sesscode::placeholder{letter-spacing:1px;text-transform:none}
   .sessbox p.sub{margin:8px 0 0}
-  .impbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+  .impbox{padding:0 14px 14px}
   .impbox .imphd{margin:0 0 8px}
+  .impwrap{border:1px solid var(--line);border-radius:14px;margin:10px 0;background:var(--card);overflow:hidden}
+  .impwrap summary{display:flex;align-items:center;gap:8px;padding:13px 14px;cursor:pointer;list-style:none;font-weight:600;font-size:14px;color:var(--txt)}
+  .impwrap summary::-webkit-details-marker{display:none}
+  .impwrap summary .caret{color:var(--muted);transition:transform .15s;font-size:16px}
+  .impwrap[open] summary .caret{transform:rotate(90deg)}
+  .sessbox{transition:border-color .2s}
+  .sessbox:has(.sess-info.ok){border-color:var(--acc2)}
   .row2{display:flex;gap:10px}
   .row2-col{flex:1;min-width:0}
   .imphint{font-size:12px;color:var(--muted);margin:2px 0 12px}
@@ -353,25 +360,27 @@
       </div>
     </div>
 
-    <div class="impbox">
-      <div class="imphd">Импорт</div>
-      <button id="btnBlankImport" class="blankimp">Структура товаров (бланк)</button>
-      <p class="imphint">Загрузи бланк (.xls/.xlsx) — по нему строится список товаров и групп для подсчёта.</p>
-      <button id="btnInvImportCalc" class="blankimp">Остатки из отчёта</button>
-      <p class="imphint">Импорт остатков из отчёта (.xlsx) — данные берутся из крайнего правого столбца.</p>
-      <div class="panel rptbox">
-        <p class="sub">Заполнение бланка: выбери шаблон (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие».</p>
-        <label for="rptTpl">Шаблон бланка (.xlsx)</label>
-        <input type="file" id="rptTpl" accept=".xlsx">
-        <div class="bar">
-          <button id="btnReport" class="blue">Заполнить и скачать</button>
+    <details class="impwrap" id="impWrap">
+      <summary><span class="caret">›</span><span>Импорт и шаблоны</span></summary>
+      <div class="impbox">
+        <button id="btnBlankImport" class="blankimp">Структура товаров (бланк)</button>
+        <p class="imphint">Загрузи бланк (.xls/.xlsx) — по нему строится список товаров и групп для подсчёта.</p>
+        <button id="btnInvImportCalc" class="blankimp">Остатки из отчёта</button>
+        <p class="imphint">Импорт остатков из отчёта (.xlsx) — данные берутся из крайнего правого столбца.</p>
+        <div class="panel rptbox">
+          <p class="sub">Заполнение бланка: выбери шаблон (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие».</p>
+          <label for="rptTpl">Шаблон бланка (.xlsx)</label>
+          <input type="file" id="rptTpl" accept=".xlsx">
+          <div class="bar">
+            <button id="btnReport" class="blue">Заполнить и скачать</button>
+          </div>
+          <div class="rpt-status" id="rptStatus"></div>
+          <div class="rpt-detail" id="rptDetail"></div>
         </div>
-        <div class="rpt-status" id="rptStatus"></div>
-        <div class="rpt-detail" id="rptDetail"></div>
+        <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
+        <div class="sub" id="invImportRes"></div>
       </div>
-      <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
-      <div class="sub" id="invImportRes"></div>
-    </div>
+    </details>
 
     <h2>Сохранённые подсчёты</h2>
     <div class="savebar">
@@ -406,6 +415,10 @@
 
   <section id="tab-count" class="pane hidden">
     <h2 class="h2big">Подсчёт товаров</h2>
+    <div class="progwrap">
+      <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
+      <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
+    </div>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <div id="invCountGroups"></div>
@@ -1283,6 +1296,10 @@ function updateInvStats(){
   const fillEl = document.getElementById("progFill");
   if(pctEl) pctEl.textContent = pct + "%";
   if(fillEl) fillEl.style.width = pct + "%";
+  const cPctEl = document.getElementById("countProgPct");
+  const cFillEl = document.getElementById("countProgFill");
+  if(cPctEl) cPctEl.textContent = pct + "%";
+  if(cFillEl) cFillEl.style.width = pct + "%";
   renderInvDiff();
 }
 
