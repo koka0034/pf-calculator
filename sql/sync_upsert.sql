@@ -4,7 +4,13 @@
 -- 1) колонка для идентификатора устройства
 alter table public.inventory_reports add column if not exists device_id text;
 
--- 2) выгрузка: заменяет вклад данного устройства (не суммирует — повторная выгрузка идемпотентна)
+-- 2) снять старый уникальный ключ (одна строка на склад+дату) — иначе второй прибор не запишется
+alter table public.inventory_reports drop constraint if exists inventory_reports_warehouse_report_date_key;
+
+-- 3) новый уникальный ключ: склад + дата + устройство
+alter table public.inventory_reports add constraint inventory_reports_wh_date_dev_key unique (warehouse, report_date, device_id);
+
+-- 4) выгрузка: заменяет вклад данного устройства (не суммирует — повторная выгрузка идемпотентна)
 create or replace function public.upsert_fact(p_warehouse text, p_report_date text, p_device_id text, p_fact jsonb)
 returns void
 language plpgsql
@@ -20,7 +26,7 @@ begin
 end;
 $$;
 
--- 3) приём: суммирует вклады всех устройств по ключам, очищает сервер и возвращает сумму
+-- 5) приём: суммирует вклады всех устройств по ключам, очищает сервер и возвращает сумму
 create or replace function public.drain_fact(p_warehouse text, p_report_date text)
 returns jsonb
 language plpgsql
@@ -46,6 +52,7 @@ begin
 end;
 $$;
 
--- 4) права
+-- 6) права + убрать устаревшую функцию
 grant execute on function public.upsert_fact(text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.drain_fact(text, text) to anon, authenticated;
+drop function if exists public.accumulate_fact(text, text, jsonb);

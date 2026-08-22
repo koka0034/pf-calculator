@@ -708,23 +708,11 @@ function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || "")
 
 function sbSnapshot(){
   const o = {};
-  const add = function(k, v){
-    const n = toNum(v);
-    if(isNaN(n)) return;
-    const cur = (o[k] !== undefined) ? toNum(o[k]) : 0;
-    o[k] = Math.round((cur + n)*1000)/1000;
-  };
   for(const k in invState.fact){
     const v = invState.fact[k];
     if(v === undefined || v === null || v === "") continue;
-    add(k, v);
-  }
-  if(invState.pfAdd){
-    for(const k in invState.pfAdd){
-      const v = invState.pfAdd[k];
-      if(v === undefined || v === null || v === "") continue;
-      add(k, v);
-    }
+    const n = toNum(v);
+    if(!isNaN(n)) o[k] = Math.round(n*1000)/1000;
   }
   return o;
 }
