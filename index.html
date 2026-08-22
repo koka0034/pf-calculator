@@ -241,6 +241,16 @@
   .htbl td.num,.htbl th.num{text-align:right}
   .a-btn{display:inline-block;background:var(--card);border:1px solid var(--line);
     border-radius:9px;color:var(--txt);padding:9px 14px;font-size:14px;text-decoration:none;cursor:pointer}
+
+  .sessbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+  .sess-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
+  .sess-info{font-size:13px;color:var(--muted);margin-bottom:10px;word-break:break-all}
+  .sess-info.ok{color:var(--acc2);font-weight:600}
+  .sesscode{flex:1;min-width:120px;height:44px;border-radius:12px;border:1px solid var(--line);
+    background:var(--input);color:var(--txt);padding:0 10px;font-size:15px;text-align:center;
+    text-transform:uppercase;letter-spacing:3px}
+  .sesscode::placeholder{letter-spacing:1px;text-transform:none}
+  .sessbox p.sub{margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -275,6 +285,16 @@
         <button id="btnAccept" class="sb">Принять результаты с сервера</button>
         <button id="btnClearServer" class="burgundy">Сбросить данные сервера</button>
         <span class="sbstatus" id="sbStatus"></span>
+      </div>
+      <div class="sessbox">
+        <div class="sess-title">Сессия синхронизации</div>
+        <div class="sess-info" id="sessInfo">нет активной сессии</div>
+        <div class="bar">
+          <button id="btnSessionCreate" class="primary">Создать сессию</button>
+          <input type="text" id="sessionCode" class="sesscode" placeholder="Код сессии" maxlength="8" autocomplete="off" spellcheck="false">
+          <button id="btnSessionJoin" class="blue">Войти в сессию</button>
+        </div>
+        <p class="sub">Начальник: выбери ресторан, склад и дату → «Создать сессию» и передай код работникам. Работник: введи код → «Войти в сессию», ресторан/склад/дата подставятся сами.</p>
       </div>
       <button id="btnBlankImport" class="blankimp">Импорт бланка (Excel)</button>
       <div class="bar">
@@ -750,6 +770,81 @@ function sbDeviceId(){
     }
     return id;
   }catch(e){ return "dev-" + Date.now(); }
+}
+
+
+/* ---------- Сессия синхронизации ---------- */
+const SESSION_LS = "pfcalc_session";
+
+function genSessionCode(){
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function sbSessionInfo(){
+  try{ const d = JSON.parse(localStorage.getItem(SESSION_LS) || "null"); return (d && typeof d === "object") ? d : null; }
+  catch(e){ return null; }
+}
+function sbSetSession(code, wk, date){
+  try{ localStorage.setItem(SESSION_LS, JSON.stringify({code:code, warehouse:wk, report_date:date})); }catch(e){}
+  renderSessionInfo();
+}
+function renderSessionInfo(){
+  const el = document.getElementById("sessInfo");
+  if(!el) return;
+  const s = sbSessionInfo();
+  if(s && s.code){
+    el.textContent = "Сессия " + s.code + " · " + s.warehouse + " · " + s.report_date;
+    el.className = "sess-info ok";
+  } else {
+    el.textContent = "нет активной сессии";
+    el.className = "sess-info";
+  }
+}
+function sbApplySession(s){
+  const wk = (s && s.warehouse) || "";
+  const parts = wk.split("::");
+  const restaurant = parts[0] || "";
+  let rest = parts.slice(1).join("::") || "";
+  if(!invRestaurants.includes(rest)) rest = invRestaurants[0] || "Бар";
+  if(RESTAURANTS.includes(restaurant)) invRestaurant = restaurant;
+  localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
+  invRest = rest;
+  INV_GROUPS = invLoadDict();
+  invState = invLoadState(invRest);
+  if(s && s.report_date) invState.date = s.report_date;
+  renderRestSelect();
+  renderRestaurantSelect();
+  syncInvSetup();
+  renderInvGroups(); updateInvStats(); renderInvDiff();
+  invSaveState();
+}
+async function sbCreateSession(){
+  const c = sbClient(); if(!c) return;
+  const code = genSessionCode();
+  const wk = sbWarehouseKey();
+  const date = sbReportDate();
+  sbSetStatus("Создание сессии…", true);
+  const { error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId() });
+  if(error){ sbSetStatus("Ошибка: " + error.message, false); toast("Не удалось создать сессию"); return; }
+  sbSetSession(code, wk, date);
+  sbSetStatus("Сессия " + code, true);
+  toast("Сессия " + code + " создана — сообщи код работникам");
+}
+async function sbJoinSession(){
+  const c = sbClient(); if(!c) return;
+  const inp = document.getElementById("sessionCode");
+  const code = (inp ? inp.value : "").trim().toUpperCase();
+  if(!code){ sbSetStatus("Введи код сессии", false); return; }
+  sbSetStatus("Поиск сессии…", true);
+  const { data, error } = await c.rpc("get_session", { p_code: code });
+  if(error){ sbSetStatus("Ошибка: " + error.message, false); toast("Ошибка поиска сессии"); return; }
+  if(!data || !data.warehouse){ sbSetStatus("Сессия не найдена", false); toast("Сессия " + code + " не найдена"); return; }
+  sbApplySession(data);
+  sbSetSession(code, data.warehouse, data.report_date);
+  sbSetStatus("Вошёл в сессию " + code, true);
+  toast("Сессия " + code + " — склад и дата подставлены");
 }
 
 async function saveAndUpload(){
@@ -1664,6 +1759,8 @@ function initInv(){
   document.getElementById("btnGrpToggle").addEventListener("click", toggleAllGroups);
   document.getElementById("btnAccept").addEventListener("click", sbAccept);
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
+  document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
+  document.getElementById("btnSessionJoin").addEventListener("click", sbJoinSession);
   document.getElementById("btnInvSave2").addEventListener("click", saveAndUpload);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
@@ -1703,6 +1800,7 @@ recompute();
 
 initInv();
 renderHist();
+renderSessionInfo();
 
 const btnTop = document.getElementById("btnTop");
 const btnHome = document.getElementById("btnHome");
