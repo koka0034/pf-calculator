@@ -177,9 +177,9 @@
   .grpadd:hover{color:#5a9df0;border-color:#5a9df0}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
-  .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
-       background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
-  .blankimp:hover{border-color:var(--acc);color:var(--acc)}
+  .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid #7a1f3d;
+       background:#7a1f3d;color:#fff;font-weight:600;cursor:pointer;margin-top:8px}
+  .blankimp:hover{border-color:#96355a;color:#fff}
   .totop{position:fixed;right:16px;bottom:calc(18px + 5vh);width:46px;height:46px;border-radius:50%;
        border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
@@ -260,6 +260,10 @@
   .row2{display:flex;gap:10px}
   .row2-col{flex:1;min-width:0}
   .imphint{font-size:12px;color:var(--muted);margin:2px 0 12px}
+  .syncbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+  .syncbox .sync-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-bottom:8px}
+  .syncbox .bar{margin-top:0}
+  .syncbox .sbstatus{display:block;margin-top:8px}
 
   /* progress */
   .progwrap{margin:12px 0 4px}
@@ -324,11 +328,6 @@
           <input type="date" id="invDate">
         </div>
       </div>
-      <div class="sbwrap">
-        <button id="btnAccept" class="sb">Принять результаты с сервера</button>
-        <button id="btnClearServer" class="burgundy">Сбросить данные сервера</button>
-        <span class="sbstatus" id="sbStatus"></span>
-      </div>
       <div class="sessbox">
         <div class="sess-title">Сессия синхронизации</div>
         <div class="sess-info" id="sessInfo">нет активной сессии</div>
@@ -366,6 +365,15 @@
       <button id="btnSave" class="primary">Сохранить</button>
     </div>
     <div class="panel"><div id="history"></div></div>
+
+    <div class="syncbox">
+      <div class="sync-title">Синхронизация с сервером</div>
+      <div class="bar">
+        <button id="btnAccept" class="primary">Принять результаты с сервера</button>
+        <button id="btnClearServer" class="burgundy">Сбросить данные сервера</button>
+      </div>
+      <span class="sbstatus" id="sbStatus"></span>
+    </div>
 
     <h2 class="h2big">Сверка остатков</h2>
     <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
