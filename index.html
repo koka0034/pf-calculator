@@ -246,6 +246,10 @@
   .sess-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
   .sess-info{font-size:13px;color:var(--muted);margin-bottom:10px;word-break:break-all}
   .sess-info.ok{color:var(--acc2);font-weight:600}
+  .sess-copy{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:6px;
+    border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--txt);
+    font-size:14px;line-height:1;cursor:pointer;vertical-align:middle;flex:none}
+  .sess-copy:active{background:var(--line)}
   .sesscode{flex:1;min-width:120px;height:44px;border-radius:12px;border:1px solid var(--line);
     background:var(--input);color:var(--txt);padding:0 10px;font-size:15px;text-align:center;
     text-transform:uppercase;letter-spacing:3px}
@@ -275,13 +279,6 @@
 
   .imphd{text-align:center;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);margin:16px 0 8px}
   .goods .fstep button,.stepper button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
-
-  .floatnext{position:absolute;right:10px;width:46px;height:46px;border-radius:50%;
-    background:var(--acc);color:#171103;font-size:20px;font-weight:700;
-    border:1px solid var(--acc);box-shadow:0 4px 14px rgba(0,0,0,.5);
-    z-index:55;display:none;align-items:center;justify-content:center;
-    cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation}
-  .floatnext.show{display:flex}
 </style>
 </head>
 <body>
@@ -439,7 +436,6 @@
 <input type="file" id="blankFile" accept=".xls,.xlsx">
 <button id="btnHome" class="tohome" title="На главную">🏠</button>
 <button id="btnTop" class="totop" title="Наверх">↑</button>
-<button id="btnFloatNext" class="floatnext" title="Далее">→</button>
 
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
@@ -850,12 +846,43 @@ function renderSessionInfo(){
   if(!el) return;
   const s = sbSessionInfo();
   if(s && s.code){
-    el.textContent = "Сессия " + s.code + " · " + s.warehouse + " · " + s.report_date;
+    el.textContent = "";
     el.className = "sess-info ok";
+    const t = document.createElement("span");
+    t.textContent = "Сессия " + s.code + " · " + s.warehouse + " · " + s.report_date;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sess-copy";
+    b.title = "Копировать номер сессии";
+    b.textContent = "⧉";
+    b.addEventListener("click", (ev)=>{ ev.stopPropagation(); copySessionCode(s.code); });
+    el.append(t, b);
   } else {
     el.textContent = "нет активной сессии";
     el.className = "sess-info";
   }
+}
+function copySessionCode(code){
+  const done = (ok)=>toast(ok ? "Код сессии скопирован" : "Не удалось скопировать");
+  const copy = (txt)=>{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(txt);
+    }
+    return new Promise((res, rej)=>{
+      try{
+        const ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok ? res() : rej(new Error("copy failed"));
+      }catch(e){ rej(e); }
+    });
+  };
+  copy(code).then(()=>done(true)).catch(()=>done(false));
 }
 function sbApplySession(s){
   const wk = (s && s.warehouse) || "";
@@ -1893,45 +1920,6 @@ window.addEventListener("scroll", ()=>{
 btnTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
 btnHome.addEventListener("click", ()=>{ switchTab("inv"); window.scrollTo({top:0, behavior:"smooth"}); });
 
-/* floating next-cell button */
-let lastFactInput = null;
-function floatNextTarget(cur){
-  if(cur.classList && cur.classList.contains("factinp")){
-    const pane = cur.closest(".pane") || document;
-    const all = Array.from(pane.querySelectorAll("input.factinp"));
-    const idx = all.indexOf(cur);
-    return (idx >= 0 && idx + 1 < all.length) ? all[idx+1] : null;
-  }
-  if(cur.dataset && cur.dataset.i !== undefined){
-    return document.querySelector('input[data-i="' + (Number(cur.dataset.i) + 1) + '"]');
-  }
-  return null;
-}
-function floatNextShow(cur){
-  const btn = document.getElementById("btnFloatNext");
-  if(!btn) return;
-  const nx = floatNextTarget(cur);
-  if(!nx){ btn.classList.remove("show"); return; }
-  const r = nx.getBoundingClientRect();
-  btn.style.top = (r.top + window.scrollY + r.height/2 - 23) + "px";
-  btn.classList.add("show");
-}
-function floatNextHide(){ const b = document.getElementById("btnFloatNext"); if(b) b.classList.remove("show"); }
-
-document.addEventListener("focusin", (e)=>{
-  const t = e.target;
-  if(t && t.matches && t.matches("input.factinp, input[data-i]")){ lastFactInput = t; floatNextShow(t); }
-});
-document.addEventListener("focusout", (e)=>{
-  const rt = e.relatedTarget;
-  if(!rt || !(rt.matches && rt.matches("input.factinp, input[data-i]"))) floatNextHide();
-});
-document.getElementById("btnFloatNext").addEventListener("pointerdown", (e)=>{
-  e.preventDefault();
-  if(!lastFactInput) return;
-  if(lastFactInput.classList.contains("factinp")) focusNextFact(lastFactInput);
-  else if(lastFactInput.dataset && lastFactInput.dataset.i !== undefined) focusNextPf(Number(lastFactInput.dataset.i));
-});
 </script>
 </body>
 </html>
