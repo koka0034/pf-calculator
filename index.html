@@ -180,6 +180,10 @@
   .grpadd{width:100%;height:44px;margin-top:6px;border-radius:12px;border:1px dashed var(--line);
        background:transparent;color:#ff4da6;font-size:14px;font-weight:600;cursor:pointer}
   .grpadd:hover{color:#ff7fc2;border-color:#ff7fc2}
+  .fwbtn{display:block;width:100%;height:44px;border-radius:12px;border:1px solid transparent;
+    font-size:14px;font-weight:600;cursor:pointer;margin:8px 0}
+  .fwbtn.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  .fwbtn.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
   .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid #2f6fd0;
@@ -400,15 +404,12 @@
   </section>
 
   <section id="tab-count" class="pane hidden">
+    <button id="btnInvSave2" class="fwbtn primary">Сохранить и выгрузить результаты</button>
     <h2 class="h2big">Подсчёт товаров</h2>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <div id="invCountGroups"></div>
-
-    <div class="bar">
-      <button id="btnInvSave2" class="primary">Сохранить и выгрузить результаты</button>
-      <button id="btnCountClearFact" class="burgundy">Сбросить введённые данные</button>
-    </div>
+    <button id="btnCountClearFact" class="fwbtn burgundy">Сбросить введённые данные</button>
   </section>
 
   <section id="tab-pf" class="pane hidden">
