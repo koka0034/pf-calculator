@@ -98,7 +98,8 @@
   .diffwrap summary .caret{color:#4a5360;transition:transform .15s;font-size:16px}
   .diffwrap[open] summary .caret{transform:rotate(90deg)}
   .diffwrap .bar{margin:0 14px 10px}
-  .diffwrap .panel{margin:0 14px 14px;background:#eceef1;border-color:#c9ced6}
+  .diffwrap .panel{margin:0 14px 14px;background:#eceef1;border-color:#c9ced6;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .diffwrap .panel table{min-width:460px}
   .diffwrap .panel th{color:#4a5360}
   .diffwrap .panel td{color:#000}
   .diffwrap .panel td.num{color:#000}
@@ -155,8 +156,6 @@
   .igrp summary .caret{color:var(--muted);transition:transform .15s;font-size:16px}
   .igrp[open] summary .caret{transform:rotate(90deg)}
   .gbody{padding:0 10px 10px}
-  .gbody.hscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .gbody.hscroll .goods{min-width:400px}
   .goods{width:100%;border-collapse:collapse}
   .goods th,.goods td{padding:6px 4px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle}
   .goods th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:center;border-bottom:1px solid var(--line)}
@@ -1177,7 +1176,6 @@ function renderGroupsInto(boxId, showDiff){
 
     const body = document.createElement("div");
     body.className = "gbody";
-    if(showDiff) body.classList.add("hscroll");
 
     const tbl = document.createElement("table");
     tbl.className = "goods";
