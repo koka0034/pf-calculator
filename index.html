@@ -255,6 +255,11 @@
     text-transform:uppercase;letter-spacing:3px}
   .sesscode::placeholder{letter-spacing:1px;text-transform:none}
   .sessbox p.sub{margin:8px 0 0}
+  .impbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+  .impbox .imphd{margin:0 0 8px}
+  .row2{display:flex;gap:10px}
+  .row2-col{flex:1;min-width:0}
+  .imphint{font-size:12px;color:var(--muted);margin:2px 0 12px}
 
   /* progress */
   .progwrap{margin:12px 0 4px}
@@ -309,10 +314,16 @@
     <div class="inv-top">
       <label for="invRestaurant">Ресторан</label>
       <select id="invRestaurant"></select>
-      <label for="invRest">Склад</label>
-      <select id="invRest"></select>
-      <label for="invDate">Дата инвентаризации</label>
-      <input type="date" id="invDate">
+      <div class="row2">
+        <div class="row2-col">
+          <label for="invRest">Склад</label>
+          <select id="invRest"></select>
+        </div>
+        <div class="row2-col">
+          <label for="invDate">Дата</label>
+          <input type="date" id="invDate">
+        </div>
+      </div>
       <div class="sbwrap">
         <button id="btnAccept" class="sb">Принять результаты с сервера</button>
         <button id="btnClearServer" class="burgundy">Сбросить данные сервера</button>
@@ -328,9 +339,14 @@
         </div>
         <p class="sub">Начальник: выбери ресторан, склад и дату → «Создать сессию» и передай код работникам. Работник: введи код → «Войти в сессию», ресторан/склад/дата подставятся сами.</p>
       </div>
+    </div>
+
+    <div class="impbox">
       <div class="imphd">Импорт</div>
       <button id="btnBlankImport" class="blankimp">Структура товаров (бланк)</button>
+      <p class="imphint">Загрузи бланк (.xls/.xlsx) — по нему строится список товаров и групп для подсчёта.</p>
       <button id="btnInvImportCalc" class="blankimp">Остатки из отчёта</button>
+      <p class="imphint">Импорт остатков из отчёта (.xlsx) — данные берутся из крайнего правого столбца.</p>
       <div class="panel rptbox">
         <p class="sub">Заполнение бланка: выбери шаблон (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие».</p>
         <label for="rptTpl">Шаблон бланка (.xlsx)</label>
