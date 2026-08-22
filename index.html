@@ -728,22 +728,15 @@ function sbSnapshot(){
   }
   return o;
 }
-function sbLastKey(){ return "pfcalc_lastup_" + sbWarehouseKey() + "_" + (sbReportDate() || ""); }
-function sbLoadLast(){ try{ return JSON.parse(localStorage.getItem(sbLastKey()) || "null"); }catch(e){ return null; } }
-function sbSaveLast(snap){ try{ localStorage.setItem(sbLastKey(), JSON.stringify(snap)); }catch(e){} }
-
-function sbDelta(cur, last){
-  const d = {};
-  const keys = {};
-  for(const k in cur) keys[k] = 1;
-  if(last) for(const k in last) keys[k] = 1;
-  for(const k in keys){
-    const c = (cur[k] !== undefined) ? toNum(cur[k]) : 0;
-    const l = (last && last[k] !== undefined) ? toNum(last[k]) : 0;
-    const diff = Math.round((c - l)*1000)/1000;
-    if(Math.abs(diff) > 1e-9) d[k] = diff;
-  }
-  return d;
+function sbDeviceId(){
+  try{
+    let id = localStorage.getItem("pfcalc_dev");
+    if(!id){
+      id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : ("dev-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem("pfcalc_dev", id);
+    }
+    return id;
+  }catch(e){ return "dev-" + Date.now(); }
 }
 
 async function saveAndUpload(){
@@ -756,19 +749,12 @@ async function sbUpload(){
   const wk = sbWarehouseKey();
   const date = sbReportDate();
   const snap = sbSnapshot();
-  const last = sbLoadLast();
-  const delta = sbDelta(snap, last);
-  if(Object.keys(delta).length === 0){
-    sbSetStatus("Нет изменений для выгрузки", true);
-    toast("Нет изменений — всё уже выгружено");
-    return;
-  }
   sbSetStatus("Выгрузка…", true);
-  const { error } = await c.rpc("accumulate_fact", { p_warehouse: wk, p_report_date: date, p_fact: delta });
+  const { error } = await c.rpc("upsert_fact", { p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap });
   if(error){ sbSetStatus("Ошибка выгрузки: " + error.message, false); toast("Ошибка выгрузки"); return; }
-  sbSaveLast(snap);
-  sbSetStatus("Выгружено (" + Object.keys(delta).length + " изм.)", true);
-  toast("Результаты выгружены на сервер");
+  const n = Object.keys(snap).length;
+  sbSetStatus("Выгружено (" + n + " поз.)", true);
+  toast(n ? ("Выгружено " + n + " позиций на сервер") : "Выгружено (вклад очищен)");
 }
 
 function applyFact(fact){
@@ -799,7 +785,6 @@ async function sbAccept(){
     else delete invState.fact[k];
   }
   invSaveState();
-  sbSaveLast(sbSnapshot());
   renderInvGroups(); updateInvStats(); renderInvDiff();
   const total = Object.keys(res).length;
   sbSetStatus(total ? ("Принято " + total + " знач.") : "На сервере нет данных", true);
