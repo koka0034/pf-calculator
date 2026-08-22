@@ -1182,6 +1182,7 @@ function renderGroupsInto(boxId, showDiff){
     if(q && !goods.length) return;
     const det = document.createElement("details");
     det.className = "igrp";
+    det.dataset.g = g.g;
     const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined || (invState.pfAdd && invState.pfAdd[goodKey(g.g, gd.n)]));
     det.open = has || !!q;
     const sum = document.createElement("summary");
@@ -1274,6 +1275,29 @@ function renderGroupsInto(boxId, showDiff){
   });
 }
 
+function updateGroupCounters(){
+  document.querySelectorAll(".igrp").forEach(det=>{
+    const gn = det.dataset.g;
+    if(!gn) return;
+    const g = INV_GROUPS.find(x=>x.g === gn);
+    if(!g) return;
+    const gTotal = g.goods.length;
+    let gCounted = 0;
+    g.goods.forEach(gd=>{
+      const k = goodKey(g.g, gd.n);
+      if(invState.fact[k] !== undefined || (invState.pfAdd && invState.pfAdd[k])) gCounted++;
+    });
+    const gpct = gTotal ? Math.round(gCounted/gTotal*100) : 0;
+    const gcnt = det.querySelector(".gcnt");
+    if(gcnt){
+      gcnt.textContent = gCounted + "/" + gTotal + " · " + gpct + "%";
+      gcnt.classList.toggle("done", gCounted === gTotal && gTotal);
+    }
+    const gfill = det.querySelector(".gfill");
+    if(gfill) gfill.style.width = gpct + "%";
+  });
+}
+
 function updateInvStats(){
   let total = 0, counted = 0, diffs = 0;
   INV_GROUPS.forEach(g=>{
@@ -1300,6 +1324,7 @@ function updateInvStats(){
   const cFillEl = document.getElementById("countProgFill");
   if(cPctEl) cPctEl.textContent = pct + "%";
   if(cFillEl) cFillEl.style.width = pct + "%";
+  updateGroupCounters();
   renderInvDiff();
 }
 
