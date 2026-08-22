@@ -180,11 +180,16 @@
   .blankimp{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
        background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer;margin-top:8px}
   .blankimp:hover{border-color:var(--acc);color:var(--acc)}
-  .totop{position:fixed;right:16px;bottom:18px;width:46px;height:46px;border-radius:50%;
+  .totop{position:fixed;right:16px;bottom:calc(18px + 10vh);width:46px;height:46px;border-radius:50%;
        border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
        box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
   .totop.show{display:flex}
+  .tohome{position:fixed;left:16px;top:16px;width:46px;height:46px;border-radius:50%;
+       border:1px solid var(--line);background:var(--acc2);color:#06120c;font-size:20px;font-weight:700;
+       cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
+       box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
+  .tohome.show{display:flex}
   #blankFile{display:none}
   #calcFile{display:none}
   #jsonFile{display:none}
@@ -374,6 +379,7 @@
 </div>
 
 <input type="file" id="blankFile" accept=".xls,.xlsx">
+<button id="btnHome" class="tohome" title="На главную">🏠</button>
 <button id="btnTop" class="totop" title="Наверх">↑</button>
 
 <div id="printArea"></div>
@@ -910,7 +916,14 @@ function renderGroupsInto(boxId, showDiff){
     const sum = document.createElement("summary");
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
     const gnm = document.createElement("span"); gnm.className="gnm"; gnm.textContent = g.g;
-    const gcnt = document.createElement("span"); gcnt.className="gcnt"; gcnt.textContent = goods.length + " поз.";
+    const gcnt = document.createElement("span"); gcnt.className="gcnt";
+    const gTotal = g.goods.length;
+    let gCounted = 0;
+    g.goods.forEach(gd=>{
+      const k = goodKey(g.g, gd.n);
+      if(invState.fact[k] !== undefined || (invState.pfAdd && invState.pfAdd[k])) gCounted++;
+    });
+    gcnt.textContent = gCounted + " из " + gTotal + " поз.";
     sum.append(caret, gnm, gcnt);
     det.appendChild(sum);
 
@@ -1497,13 +1510,29 @@ function buildReportGoods(){
   INV_GROUPS.forEach(g=>{
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
-      const f = invState.fact[key] || 0;
-      const p = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      if(f <= 0 && p <= 0) return;
-      rows.push({name:gd.n, total:Math.round((f+p)*1000)/1000});
+      const f = invState.fact[key];
+      if(f === undefined || f === null || f === "") return;
+      rows.push({name:gd.n, val:f});
     });
   });
   return rows;
+}
+function buildReportPf(){
+  const out = [];
+  const pf = getInputs();
+  for(const k in pf){
+    if(pf[k] > 0) out.push({name:k, val:pf[k]});
+  }
+  return out;
+}
+function nameMap(list){
+  const map = new Map();
+  for(const g of list){
+    const nm = g.name || "";
+    const k = canon(nm);
+    if(k && !map.has(k)) map.set(k, { name: String(nm), val: g.val });
+  }
+  return map;
 }
 function rptClean(x){
   const r = Math.round(x*1000)/1000;
@@ -1518,19 +1547,20 @@ async function runReport(){
   if(!tpl){ st.textContent = "Выбери шаблон бланка (.xlsx)."; return; }
   try{
     const goods = buildReportGoods();
-    if(!goods.length){ st.textContent = "Нет введённых остатков — сначала заполни подсчёт."; return; }
-    const map = new Map();
-    for(const g of goods){
-      const nm = g.name || "";
-      const k = canon(nm);
-      if(k && !map.has(k)) map.set(k, { name: String(nm), val: g.total });
-    }
+    const pf = buildReportPf();
+    if(!goods.length && !pf.length){ st.textContent = "Нет введённых данных — сначала заполни подсчёт."; return; }
+    const toMap = nameMap(goods);
+    const pfMap = nameMap(pf);
     if(!window.ExcelJS){ st.textContent = "Библиотека ExcelJS не загрузилась."; return; }
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(await tpl.arrayBuffer());
     let filled = 0, blankNoVal = 0;
-    const used = new Set();
+    const usedTov = new Set(), usedPf = new Set();
     wb.eachSheet(function(ws){
+      const sn = String(ws.name || "").toLowerCase();
+      const isPf = /блюд|заготов|полуф|пф/.test(sn);
+      const map = isPf ? pfMap : toMap;
+      const used = isPf ? usedPf : usedTov;
       ws.eachRow(function(row){
         const nmc = row.getCell(3).value;
         if(nmc === null || nmc === undefined) return;
@@ -1548,7 +1578,8 @@ async function runReport(){
       });
     });
     const unmatched = [];
-    map.forEach(function(v, k){ if(!used.has(k)) unmatched.push(v.name); });
+    toMap.forEach(function(v, k){ if(!usedTov.has(k)) unmatched.push("Товар: " + v.name); });
+    pfMap.forEach(function(v, k){ if(!usedPf.has(k)) unmatched.push("ПФ: " + v.name); });
     const d = String(invState.date || "").replace(/[^0-9-]/g, "");
     const r = String(invRestaurant || invRest || "").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "");
     const fname = (r ? r + "-" : "") + (d || "filled") + ".xlsx";
@@ -1643,8 +1674,14 @@ initInv();
 renderHist();
 
 const btnTop = document.getElementById("btnTop");
-window.addEventListener("scroll", ()=>{ btnTop.classList.toggle("show", window.scrollY > 400); });
+const btnHome = document.getElementById("btnHome");
+window.addEventListener("scroll", ()=>{
+  const show = window.scrollY > 400;
+  btnTop.classList.toggle("show", show);
+  btnHome.classList.toggle("show", show);
+});
 btnTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
+btnHome.addEventListener("click", ()=>{ switchTab("inv"); window.scrollTo({top:0, behavior:"smooth"}); });
 </script>
 </body>
 </html>
