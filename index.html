@@ -704,10 +704,23 @@ const OTHER_PF = [{"n":"ПФ Сироп Лемонграсс 0426","u":"л","ite
 const ALL_PF = RECIPES.map(r => ({n: r.n, u: "л", items: r.items})).concat(OTHER_PF);
 
 function repeatOn(btn, fn){
-  let t = null, iv = null;
-  const stop = ()=>{ if(t){ clearTimeout(t); t=null; } if(iv){ clearInterval(iv); iv=null; } };
-  btn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); stop(); fn(); t = setTimeout(()=>{ iv = setInterval(fn, 110); }, 420); });
-  ["pointerup","pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev, stop));
+  let iv = null, pressTimer = null;
+  let sx = 0, sy = 0, moved = false, started = false;
+
+  const stopAll = ()=>{ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } if(iv){ clearInterval(iv); iv=null; } };
+  const onMove = (x, y)=>{ if(Math.abs(x - sx) > 10 || Math.abs(y - sy) > 10){ moved = true; if(!started) stopAll(); } };
+
+  btn.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    sx = e.clientX; sy = e.clientY;
+    moved = false; started = false;
+    stopAll();
+    pressTimer = setTimeout(()=>{ if(!moved){ started = true; fn(); iv = setInterval(fn, 110); } }, 400);
+  });
+  btn.addEventListener("pointermove", (e)=>onMove(e.clientX, e.clientY));
+  btn.addEventListener("touchmove", (e)=>{ if(e.touches && e.touches[0]) onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+  btn.addEventListener("pointerup", ()=>{ if(!moved && !started) fn(); stopAll(); });
+  ["pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev, ()=>{ moved = true; stopAll(); }));
   btn.addEventListener("contextmenu", (e)=>e.preventDefault());
 }
 
