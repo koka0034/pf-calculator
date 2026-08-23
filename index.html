@@ -13,9 +13,25 @@
 <title>Калькулятор ПФ Товары Инвентаризация и сверка остатков</title>
 <style>
   :root{
+    /* поверхности */
     --bg:#0e1116; --card:#171c24; --card2:#1c2230; --line:#262d3a;
-    --txt:#e8eaed; --muted:#98a2b0; --acc:#e0a63f; --acc2:#53d39a;
-    --input:#0b0e13; --danger:#f0706b;
+    --txt:#e8eaed; --muted:#98a2b0; --input:#0b0e13;
+
+    /* семантические роли */
+    --color-amber:#e0a63f;      /* primary — главное действие */
+    --color-green:#53d39a;      /* success — сохранено/положительное */
+    --color-red:#f0706b;        /* danger — ошибка/отрицательное */
+    --color-red-dark:#d32f2f;   /* danger — заливка подтверждения/печать */
+    --color-blue:#2f6fd0;       /* info — импорт/вспомогательное */
+    --color-blue-hover:#4d85e0;
+    --color-active:#232a37;     /* нажатие степпера */
+    --on-amber:#171103;         /* текст на янтарном */
+    --on-green:#06120c;         /* текст на зелёном */
+
+    /* обратная совместимость */
+    --acc:var(--color-amber);
+    --acc2:var(--color-green);
+    --danger:var(--color-red);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -31,7 +47,7 @@
        min-height:70px;border:1px solid var(--line);border-radius:16px;background:var(--card);
        color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
   .tab-ic{font-size:22px;line-height:1}
-  .tab-btn.active{background:var(--acc);color:#171103;border-color:var(--acc)}
+  .tab-btn.active{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
   .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
   .instr p:last-child{margin-bottom:0}
   .pfadd{color:var(--acc2);font-size:13px}
@@ -40,19 +56,19 @@
   .rptbox label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
   .rptbox input[type=file]{width:100%;color:var(--txt);font-size:14px}
   .rptbox input[type=file]::file-selector-button{height:44px;border-radius:12px;border:1px solid var(--acc);
-    background:var(--acc);color:#171103;font-weight:700;cursor:pointer;padding:0 14px;margin-right:10px;font-size:14px}
+    background:var(--acc);color:var(--on-amber);font-weight:700;cursor:pointer;padding:0 14px;margin-right:10px;font-size:14px}
   .rptbox input[type=file]::-webkit-file-upload-button{height:44px;border-radius:12px;border:1px solid var(--acc);
-    background:var(--acc);color:#171103;font-weight:700;cursor:pointer;padding:0 14px;margin-right:10px;font-size:14px}
+    background:var(--acc);color:var(--on-amber);font-weight:700;cursor:pointer;padding:0 14px;margin-right:10px;font-size:14px}
   .rptbox .rpt-status{margin-top:12px;font-size:14px;color:var(--acc2)}
-  .rptbox .rpt-status.err{color:#f0706b}
+  .rptbox .rpt-status.err{color:var(--color-red)}
   .rptbox .rpt-detail{margin-top:6px;font-size:12.5px;color:var(--muted);white-space:pre-wrap;word-break:break-word}
   .stats{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
         padding:10px 14px;min-width:108px;flex:1}
   .stat b{display:block;font-size:20px;color:var(--acc)}
   .stat span{font-size:12px;color:var(--muted)}
-  h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
-     margin:22px 2px 10px;font-weight:600}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);
+     margin:22px 2px 10px;font-weight:700}
   .pf{background:var(--card);border:1px solid var(--line);border-radius:14px;
       padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:12px}
   .pf.active{border-color:var(--acc)}
@@ -61,7 +77,7 @@
   .stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
      background:var(--card2);color:var(--txt);font-size:19px;cursor:pointer;
      display:flex;align-items:center;justify-content:center;user-select:none}
-  .stepper button:active{background:#232a37}
+  .stepper button:active{background:var(--color-active)}
   .stepper input{width:74px;height:38px;border-radius:10px;border:1px solid var(--line);
      background:var(--input);color:var(--txt);text-align:center;font-size:15px;
      -moz-appearance:textfield}
@@ -73,42 +89,37 @@
      background:var(--input);color:var(--txt);padding:0 12px;font-size:15px}
   .savebar button{flex:1;height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
-  .savebar button.primary{background:var(--acc);color:#171103;border-color:var(--acc)}
+  .savebar button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
   .bar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .bar button{flex:1;min-width:110px;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
-  .bar button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
-  .bar button.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
-  .bar button.blue{background:#2f6fd0;color:#fff;border-color:#2f6fd0}
-  .h2hl{text-align:center;background:var(--acc);color:#171103;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.6px;padding:10px 12px;border-radius:10px;margin:20px 2px 10px}
+  .bar button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
+  .bar button.burgundy{background:transparent;color:var(--color-red);border-color:var(--color-red)}
+  .bar button.blue{background:transparent;color:var(--color-blue);border-color:var(--color-blue)}
+  .bar button.blue:active{background:var(--color-blue);color:#fff}
   .h2big{text-align:center;color:var(--txt);font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.6px;margin:20px 2px 10px}
-  .sbwrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0}
-  .sb{width:100%;height:44px;padding:0 14px;border-radius:12px;border:1px solid #ff8c00;
-     background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
-  .sb.on{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
   .sbstatus{font-size:12px;color:var(--muted);text-align:center}
   .sbstatus.ok{color:var(--acc2)}
   .sbstatus.err{color:var(--danger)}
   .sbstatus:empty{display:none}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
      margin-top:8px;overflow:hidden}
-  .diffwrap{border:1px solid #c9ced6;border-radius:14px;margin:10px 0;background:#dde1e6;overflow:hidden}
-  .diffwrap summary{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 14px;cursor:pointer;list-style:none;font-weight:700;font-size:15px;color:#1a1f26}
+  .diffwrap{border:1px solid var(--line);border-radius:14px;margin:10px 0;background:var(--card);overflow:hidden}
+  .diffwrap summary{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 14px;cursor:pointer;list-style:none;font-weight:700;font-size:15px;color:var(--txt)}
   .diffwrap summary::-webkit-details-marker{display:none}
-  .diffwrap summary .caret{color:#4a5360;transition:transform .15s;font-size:16px}
+  .diffwrap summary .caret{color:var(--muted);transition:transform .15s;font-size:16px}
   .diffwrap[open] summary .caret{transform:rotate(90deg)}
   .diffwrap .bar{margin:0 14px 10px}
-  .diffwrap .panel{margin:0 14px 14px;background:#eceef1;border-color:#c9ced6;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .diffwrap .panel table{min-width:460px}
-  .diffwrap .panel th{color:#4a5360}
-  .diffwrap .panel td{color:#000}
-  .diffwrap .panel td.num{color:#000}
+  .diffwrap .panel{margin:0 14px 14px;background:var(--card2);border-color:var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .diffwrap .panel th{color:var(--muted)}
+  .diffwrap .panel td{color:var(--txt)}
+  .diffwrap .panel td.num{color:var(--acc2)}
   .diffwrap .panel td.diffc{text-align:center;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;padding:10px 6px}
-  .diffwrap .panel td.diffc.neg{color:#d32f2f}
-  .diffwrap .panel td.diffc.pos{color:#1b8a3a}
-  .diffwrap .panel td.diffc.zero{color:#6a7280}
-  .diffwrap .panel .dg{color:#4a5360}
-  .diffwrap .panel .unit{color:#6a7280}
+  .diffwrap .panel td.diffc.neg{color:var(--color-red)}
+  .diffwrap .panel td.diffc.pos{color:var(--color-green)}
+  .diffwrap .panel td.diffc.zero{color:var(--muted)}
+  .diffwrap .panel .dg{color:var(--muted)}
+  .diffwrap .panel .unit{color:var(--muted)}
   table{width:100%;border-collapse:collapse}
   th,td{padding:10px 14px;text-align:left;font-size:14px}
   th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;
@@ -178,25 +189,26 @@
        background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
   .gadd:hover{color:var(--acc);border-color:var(--acc)}
   .grpadd{width:100%;height:44px;margin-top:6px;border-radius:12px;border:1px dashed var(--line);
-       background:transparent;color:#ff4da6;font-size:14px;font-weight:600;cursor:pointer}
-  .grpadd:hover{color:#ff7fc2;border-color:#ff7fc2}
+       background:transparent;color:var(--color-amber);font-size:14px;font-weight:600;cursor:pointer}
+  .grpadd:hover{color:var(--color-amber);border-color:var(--color-amber)}
   .fwbtn{display:block;width:100%;height:44px;border-radius:12px;border:1px solid transparent;
     font-size:14px;font-weight:600;cursor:pointer;margin:8px 0}
-  .fwbtn.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
-  .fwbtn.burgundy{background:#7a1f3d;color:#fff;border-color:#7a1f3d}
-  .danger{background:#d32f2f !important;color:#fff !important;border-color:#d32f2f !important}
+  .fwbtn.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
+  .fwbtn.burgundy{background:transparent;color:var(--color-red);border-color:var(--color-red)}
+  .danger{background:var(--color-red-dark) !important;color:#fff !important;border-color:var(--color-red-dark) !important}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
-  .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid #2f6fd0;
-       background:#2f6fd0;color:#fff;font-weight:600;cursor:pointer;margin-top:8px}
-  .blankimp:hover{border-color:#4d85e0;color:#fff}
+  .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid var(--color-blue);
+       background:transparent;color:var(--color-blue);font-weight:600;cursor:pointer;margin-top:8px}
+  .blankimp:hover{border-color:var(--color-blue-hover);color:var(--color-blue-hover)}
+  .blankimp:active{background:var(--color-blue);color:#fff}
   .totop{position:fixed;right:16px;bottom:calc(18px + 5vh);width:46px;height:46px;border-radius:50%;
-       border:1px solid var(--line);background:var(--acc);color:#171103;font-size:20px;font-weight:700;
+       border:1px solid var(--line);background:var(--acc);color:var(--on-amber);font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
        box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
   .totop.show{display:flex}
   .tohome{position:fixed;left:16px;top:16px;width:46px;height:46px;border-radius:50%;
-       border:1px solid var(--line);background:var(--acc2);color:#06120c;font-size:20px;font-weight:700;
+       border:1px solid var(--line);background:var(--acc2);color:var(--on-green);font-size:20px;font-weight:700;
        cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
        box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
   .tohome.show{display:flex}
@@ -211,11 +223,11 @@
   #invImportBox select{height:40px;border-radius:10px;border:1px solid var(--line);background:var(--input);color:var(--txt);padding:0 10px;font-size:13px}
   #invImportBox button{height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);
        background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer}
-  #invImportBox button.primary{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
+  #invImportBox button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
   #invImportRes{font-size:12px;color:var(--acc2);margin-top:8px}
   .dg{display:block;font-size:11px;color:var(--muted)}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--acc2);
-       color:#06120c;padding:10px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;
+       color:var(--on-green);padding:10px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;
        transition:opacity .2s;pointer-events:none;z-index:60;max-width:86vw;text-align:center}
   .toast.show{opacity:1}
   footer{margin-top:22px;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
@@ -233,7 +245,7 @@
     #printArea td.num{text-align:right;color:#000}
     #printArea td.diffc{text-align:center;font-weight:700}
     #printArea td.diffc.neg{color:#d32f2f}
-    #printArea td.diffc.pos{color:#1b8a3a}
+    #printArea td.diffc.pos{color:#11682f}
     #printArea .pempty{color:#999}
   }
   /* --- история --- */
@@ -281,8 +293,8 @@
   .syncbox .sync-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-bottom:8px}
   .syncbox .syncbtn{display:block;width:100%;height:44px;border-radius:12px;border:1px solid transparent;
     font-size:14px;font-weight:600;cursor:pointer}
-  .syncbox .sync-accept{background:var(--acc2);color:#06120c;border-color:var(--acc2)}
-  .syncbox .sync-reset{width:50%;margin-top:8px;background:#7a1f3d;color:#fff;border-color:#7a1f3d}
+  .syncbox .sync-accept{background:var(--acc2);color:var(--on-green);border-color:var(--acc2)}
+  .syncbox .sync-reset{width:50%;margin-top:8px;background:transparent;color:var(--color-red);border-color:var(--color-red)}
   .syncbox .sbstatus{display:block;margin-top:8px}
 
   /* progress */
@@ -304,8 +316,6 @@
   .goods .fstep input{width:58px;max-width:58px;height:44px;font-size:15px}
   .stepper button{width:44px;height:44px;font-size:21px}
   .stepper input{height:44px}
-  .imphd{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin:16px 0 6px}
-
   .imphd{text-align:center;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);margin:16px 0 8px}
   .goods .fstep button,.stepper button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 </style>
@@ -395,10 +405,6 @@
       <span class="sbstatus" id="sbStatus"></span>
     </div>
 
-    <h2 class="h2big">Сверка остатков</h2>
-    <button id="btnGrpToggle" class="grpadd">Свернуть все группы</button>
-    <div id="invGroups"></div>
-
     <details class="diffwrap" id="invDiffWrap">
       <summary><span class="caret">›</span><span>Расхождения (факт − расчёт)</span></summary>
       <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff" class="blue">Печать расхождений</button></div>
@@ -421,6 +427,7 @@
     </div>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
+    <button id="btnCountMode" class="grpadd">Показать сверку (из ПФ / ±)</button>
     <div id="invCountGroups"></div>
     <button id="btnInvSave2" class="fwbtn primary">Сохранить и выгрузить результаты</button>
     <button id="btnCountClearFact" class="fwbtn burgundy">Сбросить введённые данные</button>
@@ -464,7 +471,7 @@
       <p><b>3. Импорт отчёта.</b> Кнопка «Остатки из отчёта» подгружает расчётные остатки из крайнего правого столбца файла.</p>
       <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает категории.</p>
       <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
-      <p><b>6. Разборка ПФ.</b> Остатки ПФ автоматически раскладываются в товары и появляются на «Главной» в столбце «из ПФ» — отдельно нажимать ничего не нужно.</p>
+      <p><b>6. Разборка ПФ.</b> Остатки ПФ автоматически раскладываются в товары и появляются во вкладке «Товары» в столбце «из ПФ» (кнопка «Показать сверку») — отдельно нажимать ничего не нужно.</p>
       <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. «Печать расхождений» формирует печатный отчёт.</p>
       <p><b>8. Выгрузка.</b> На вкладках «Товары» и «ПФ» кнопка «Сохранить и выгрузить результаты» сохраняет подсчёт локально и отправляет его на сервер.</p>
       <p><b>9. Приём.</b> На «Главной» кнопка «Принять результаты с сервера» забирает выгруженные данные, суммирует их с текущими и очищает сервер.</p>
@@ -781,6 +788,7 @@ let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
 let invShowAll = false;
 let invImportMode = "tsv";
 let invSearch = "";
+let invShowDiff = false;
 
 function goodKey(g, n){ return g + "||" + n; }
 function canon(s){ return String(s||"").toLowerCase().replace(/@/g," ").replace(/\s+/g," ").trim(); }
@@ -828,13 +836,24 @@ function sbSetStatus(msg, ok){
 }
 function sbClient(){
   if(sb) return sb;
-  if(!window.supabase){ sbSetStatus("Библиотека Supabase не загрузилась", false); return null; }
+  if(!window.supabase){ sbSetStatus("Библиотека Supabase не загрузилась", false); toast("Библиотека Supabase не загрузилась — синхронизация недоступна"); return null; }
   try{ sb = window.supabase.createClient(SB_URL, SB_ANON); }
-  catch(e){ sbSetStatus("Ошибка инициализации", false); return null; }
+  catch(e){ sbSetStatus("Ошибка инициализации", false); toast("Ошибка инициализации синхронизации"); return null; }
   return sb;
 }
 function sbReportDate(){ return (document.getElementById("invDate").value || "").trim(); }
 function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || ""); }
+function sbSessionGuard(){
+  const s = sbSessionInfo();
+  if(!s || !s.code){
+    return { mismatch:true, message:"Нет активной сессии — данные уйдут на склад «" + (invRestaurant || "") + " / " + (invRest || "") + "» за " + (sbReportDate() || "…") + "." };
+  }
+  const wk = sbWarehouseKey(), date = sbReportDate();
+  if(wk !== s.warehouse || date !== s.report_date){
+    return { mismatch:true, message:"Сессия " + s.code + " привязана к «" + s.warehouse + "» за " + s.report_date + ", а текущий выбор — «" + wk + "» за " + (date || "…") + "." };
+  }
+  return { mismatch:false, message:"" };
+}
 
 const PF_PREFIX = "@pf@||";
 function buildNameKey(){
@@ -966,8 +985,10 @@ async function sbCreateSession(){
   const wk = sbWarehouseKey();
   const date = sbReportDate();
   sbSetStatus("Создание сессии…", true);
-  const { error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId() });
-  if(error){ sbSetStatus("Ошибка: " + error.message, false); toast("Не удалось создать сессию"); return; }
+  let error;
+  try{ ({ error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId() })); }
+  catch(e){ error = e; }
+  if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Не удалось создать сессию — проверь сеть"); return; }
   sbSetSession(code, wk, date);
   sbSetStatus("Сессия " + code, true);
   toast("Сессия " + code + " создана — сообщи код работникам");
@@ -978,8 +999,10 @@ async function sbJoinSession(){
   const code = (inp ? inp.value : "").trim().toUpperCase();
   if(!code){ sbSetStatus("Введи код сессии", false); return; }
   sbSetStatus("Поиск сессии…", true);
-  const { data, error } = await c.rpc("get_session", { p_code: code });
-  if(error){ sbSetStatus("Ошибка: " + error.message, false); toast("Ошибка поиска сессии"); return; }
+  let data, error;
+  try{ ({ data, error } = await c.rpc("get_session", { p_code: code })); }
+  catch(e){ error = e; }
+  if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Ошибка поиска сессии — проверь сеть"); return; }
   if(!data || !data.warehouse){ sbSetStatus("Сессия не найдена", false); toast("Сессия " + code + " не найдена"); return; }
   sbApplySession(data);
   sbSetSession(code, data.warehouse, data.report_date);
@@ -994,15 +1017,19 @@ async function saveAndUpload(){
 
 async function sbUpload(){
   const c = sbClient(); if(!c) return;
+  const guard = sbSessionGuard();
+  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return;
   const wk = sbWarehouseKey();
   const date = sbReportDate();
   const snap = sbSnapshot();
   sbSetStatus("Выгрузка…", true);
-  const { error } = await c.rpc("upsert_fact", { p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap });
-  if(error){ sbSetStatus("Ошибка выгрузки: " + error.message, false); toast("Ошибка выгрузки"); return; }
+  let error;
+  try{ ({ error } = await c.rpc("upsert_fact", { p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap })); }
+  catch(e){ error = e; }
+  if(error){ sbSetStatus("Ошибка выгрузки: " + (error.message || error), false); toast("Ошибка выгрузки — проверь сеть"); return; }
   const n = Object.keys(snap).length;
   sbSetStatus("Выгружено (" + n + " поз.)", true);
-  toast(n ? ("Выгружено " + n + " позиций на сервер") : "Выгружено (вклад очищен)");
+  toast(n ? ("Выгружено " + n + " позиций на сервер") : "Нет данных для выгрузки");
 }
 
 function applyFact(fact){
@@ -1018,11 +1045,15 @@ function applyFact(fact){
 
 async function sbAccept(){
   const c = sbClient(); if(!c) return;
+  const guard = sbSessionGuard();
+  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return;
   const wk = sbWarehouseKey();
   const date = sbReportDate();
   sbSetStatus("Получение…", true);
-  const { data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date });
-  if(error){ sbSetStatus("Ошибка приёма: " + error.message, false); toast("Ошибка приёма"); return; }
+  let data, error;
+  try{ ({ data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date })); }
+  catch(e){ error = e; }
+  if(error){ sbSetStatus("Ошибка приёма: " + (error.message || error), false); toast("Ошибка приёма — проверь сеть"); return; }
   const res = (data && typeof data === "object") ? data : {};
   const nameKey = buildNameKey();
   const pfIndex = buildPfIndex();
@@ -1073,8 +1104,10 @@ async function doSbClear(){
   const wk = sbWarehouseKey();
   const date = sbReportDate();
   sbSetStatus("Очистка…", true);
-  const { data, error } = await c.rpc("clear_fact", { p_warehouse: wk, p_report_date: date });
-  if(error){ sbSetStatus("Ошибка очистки: " + error.message, false); toast("Ошибка очистки"); return; }
+  let data, error;
+  try{ ({ data, error } = await c.rpc("clear_fact", { p_warehouse: wk, p_report_date: date })); }
+  catch(e){ error = e; }
+  if(error){ sbSetStatus("Ошибка очистки: " + (error.message || error), false); toast("Ошибка очистки — проверь сеть"); return; }
   const n = (typeof data === "number") ? data : 0;
   sbSetStatus(n ? ("Очищено " + n + " зап.") : "Сервер уже пуст", true);
   toast(n ? ("Очищено " + n + " записей с сервера") : "На сервере нет данных");
@@ -1143,8 +1176,7 @@ function stepFact(key, inp, d){
 }
 
 function renderInvGroups(){
-  renderGroupsInto("invGroups", true);
-  renderGroupsInto("invCountGroups", false);
+  renderGroupsInto("invCountGroups", invShowDiff);
 }
 
 function syncFactTwins(key, except){
@@ -1430,20 +1462,19 @@ function invClearFact(e){
   });
 }
 
-function toggleAllGroups(){
-  const dets = Array.from(document.querySelectorAll("details.igrp"));
-  if(!dets.length) return;
-  const anyOpen = dets.some(d => d.open);
-  dets.forEach(d => { d.open = !anyOpen; });
-  document.getElementById("btnGrpToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
-}
-
 function toggleCountGroups(){
   const dets = Array.from(document.querySelectorAll("#invCountGroups details.igrp"));
   if(!dets.length) return;
   const anyOpen = dets.some(d => d.open);
   dets.forEach(d => { d.open = !anyOpen; });
   document.getElementById("btnCountToggle").textContent = anyOpen ? "Развернуть все группы" : "Свернуть все группы";
+}
+
+function toggleCountMode(){
+  invShowDiff = !invShowDiff;
+  const b = document.getElementById("btnCountMode");
+  if(b) b.textContent = invShowDiff ? "Скрыть сверку (из ПФ / ±)" : "Показать сверку (из ПФ / ±)";
+  renderInvGroups();
 }
 
 function printDiff(){
@@ -1976,8 +2007,8 @@ function initInv(){
     invRestaurant = document.getElementById("invRestaurant").value;
     localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   });
-  document.getElementById("btnGrpToggle").addEventListener("click", toggleAllGroups);
   document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
+  document.getElementById("btnCountMode").addEventListener("click", toggleCountMode);
   document.getElementById("btnAccept").addEventListener("click", sbAccept);
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
@@ -2004,7 +2035,7 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=
 
 /* ---- инициализация калькулятора ---- */
 document.getElementById("btnPfUpload").addEventListener("click", saveAndUpload);
-document.getElementById("btnReset").addEventListener("click", resetAll);
+document.getElementById("btnReset").addEventListener("click", function(e){ twoStep(e.currentTarget, "Сбросить", resetAll); });
 document.getElementById("btnPrint").addEventListener("click", doPrint);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
 document.getElementById("history").addEventListener("click", function(e){
