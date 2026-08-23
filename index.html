@@ -39,15 +39,20 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;}
   .wrap{max-width:680px;margin:0 auto;padding:16px 14px 120px}
-  header{padding:10px 2px 12px;text-align:center}
+  header{padding:10px 2px 12px}
+  .hdrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .hd-title{flex:1;min-width:0}
   h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px}
-  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
+  .tabs{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;margin:0 0 14px;padding:8px 0 10px}
   .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-       min-height:70px;border:1px solid var(--line);border-radius:16px;background:var(--card);
+       min-height:56px;border:1px solid var(--color-amber);border-radius:14px;background:var(--card);
        color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
   .tab-ic{font-size:22px;line-height:1}
   .tab-btn.active{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
+  .tab-btn.ic{min-width:56px;width:56px;padding:0}
+  .tab-btn.small{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;border-radius:12px;flex:0 0 auto}
+  .tab-btn.small .tab-ic{font-size:20px}
   .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
   .instr p:last-child{margin-bottom:0}
   .pfadd{color:var(--acc2);font-size:13px}
@@ -89,11 +94,13 @@
      background:var(--input);color:var(--txt);padding:0 12px;font-size:15px}
   .savebar button{flex:1;height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
-  .savebar button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
+  .savebar button.primary{background:transparent;color:var(--color-amber);border-color:var(--color-amber)}
+  .savebar button.primary:active{background:var(--color-amber);color:var(--on-amber)}
   .bar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .bar button{flex:1;min-width:110px;height:44px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
-  .bar button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
+  .bar button.primary{background:transparent;color:var(--color-amber);border-color:var(--color-amber)}
+  .bar button.primary:active{background:var(--color-amber);color:var(--on-amber)}
   .bar button.burgundy{background:transparent;color:var(--color-red);border-color:var(--color-red)}
   .bar button.blue{background:transparent;color:var(--color-blue);border-color:var(--color-blue)}
   .bar button.blue:active{background:var(--color-blue);color:#fff}
@@ -138,6 +145,9 @@
   .hist button{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
      background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
   .hist .del{width:34px;padding:0;color:var(--danger)}
+  .histmore{margin-top:4px}
+  .histmore summary{cursor:pointer;padding:11px 14px;font-size:13px;font-weight:600;color:var(--muted);list-style:none}
+  .histmore summary::-webkit-details-marker{display:none}
   .detail{background:var(--card);border:1px solid var(--line);border-radius:14px;
      margin-top:8px;padding:4px 0}
   .detail .grp{padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -195,6 +205,9 @@
     font-size:14px;font-weight:600;cursor:pointer;margin:8px 0}
   .fwbtn.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
   .fwbtn.burgundy{background:transparent;color:var(--color-red);border-color:var(--color-red)}
+  .uploadbtn{display:block;width:100%;height:44px;border-radius:12px;border:1px solid var(--color-amber);
+    background:transparent;color:var(--color-amber);font-size:14px;font-weight:600;cursor:pointer;margin:8px 0}
+  .uploadbtn:active{background:var(--color-amber);color:var(--on-amber)}
   .danger{background:var(--color-red-dark) !important;color:#fff !important;border-color:var(--color-red-dark) !important}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
        background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
@@ -202,16 +215,6 @@
        background:transparent;color:var(--color-blue);font-weight:600;cursor:pointer;margin-top:8px}
   .blankimp:hover{border-color:var(--color-blue-hover);color:var(--color-blue-hover)}
   .blankimp:active{background:var(--color-blue);color:#fff}
-  .totop{position:fixed;right:16px;bottom:calc(18px + 5vh);width:46px;height:46px;border-radius:50%;
-       border:1px solid var(--line);background:var(--acc);color:var(--on-amber);font-size:20px;font-weight:700;
-       cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
-       box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
-  .totop.show{display:flex}
-  .tohome{position:fixed;left:16px;top:16px;width:46px;height:46px;border-radius:50%;
-       border:1px solid var(--line);background:var(--acc2);color:var(--on-green);font-size:20px;font-weight:700;
-       cursor:pointer;z-index:50;display:none;align-items:center;justify-content:center;
-       box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none}
-  .tohome.show{display:flex}
   #blankFile{display:none}
   #calcFile{display:none}
   #jsonFile{display:none}
@@ -293,7 +296,8 @@
   .syncbox .sync-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600;margin-bottom:8px}
   .syncbox .syncbtn{display:block;width:100%;height:44px;border-radius:12px;border:1px solid transparent;
     font-size:14px;font-weight:600;cursor:pointer}
-  .syncbox .sync-accept{background:var(--acc2);color:var(--on-green);border-color:var(--acc2)}
+  .syncbox .sync-accept{background:transparent;color:var(--color-green);border-color:var(--color-green)}
+  .syncbox .sync-accept:active{background:var(--color-green);color:var(--on-green)}
   .syncbox .sync-reset{width:50%;margin-top:8px;background:transparent;color:var(--color-red);border-color:var(--color-red)}
   .syncbox .sbstatus{display:block;margin-top:8px}
 
@@ -323,15 +327,19 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Инвентаризация</h1>
-    <div class="sub">Учёт остатков: разборка ПФ в товары, подсчёт и сверка</div>
+    <div class="hdrow">
+      <div class="hd-title">
+        <h1>Инвентаризация</h1>
+        <div class="sub">Учёт остатков: разборка ПФ в товары, подсчёт и сверка</div>
+      </div>
+      <button id="btnHist" class="tab-btn small" data-tab="hist" title="Инструкции"><span class="tab-ic">📖</span></button>
+    </div>
   </header>
 
   <nav class="tabs" id="navTabs">
-    <button class="tab-btn active" data-tab="inv"><span class="tab-ic">🏠</span><span>Главная</span></button>
+    <button class="tab-btn ic active" data-tab="inv" title="Главная"><span class="tab-ic">🏠</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
     <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>ПФ</span></button>
-    <button class="tab-btn" data-tab="hist"><span class="tab-ic">📖</span><span>Инструкции</span></button>
   </nav>
 
   <section id="tab-inv" class="pane">
@@ -394,7 +402,7 @@
 
     <h2>Сохранённые подсчёты</h2>
     <div class="savebar">
-      <button id="btnSave" class="primary">Сохранить</button>
+      <button id="btnSave" class="primary">Сохранить локально</button>
     </div>
     <div class="panel"><div id="history"></div></div>
 
@@ -425,11 +433,11 @@
       <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
     </div>
+    <button id="btnInvSave2" class="uploadbtn">Сохранить - выгрузить - очистить подсчёт</button>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <button id="btnCountMode" class="grpadd">Показать сверку (из ПФ / ±)</button>
     <div id="invCountGroups"></div>
-    <button id="btnInvSave2" class="fwbtn primary">Сохранить и выгрузить результаты</button>
     <button id="btnCountClearFact" class="fwbtn burgundy">Сбросить введённые данные</button>
   </section>
 
@@ -439,6 +447,7 @@
       <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
       <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
     </div>
+    <button id="btnPfUpload" class="uploadbtn">Сохранить - выгрузить - очистить подсчёт</button>
 
     <h2 class="h2big">Остатки настоек (л)</h2>
     <div id="pfList"></div>
@@ -446,9 +455,6 @@
     <h2 class="h2big">Другие ПФ</h2>
     <div id="otherPfList"></div>
 
-    <div class="bar">
-      <button id="btnPfUpload" class="primary">Сохранить и выгрузить результаты</button>
-    </div>
     <div class="bar">
       <button id="btnReset" class="burgundy">Сбросить</button>
       <button id="btnPrint" class="blue">Печать отчёта</button>
@@ -473,7 +479,7 @@
       <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
       <p><b>6. Разборка ПФ.</b> Остатки ПФ автоматически раскладываются в товары и появляются во вкладке «Товары» в столбце «из ПФ» (кнопка «Показать сверку») — отдельно нажимать ничего не нужно.</p>
       <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. «Печать расхождений» формирует печатный отчёт.</p>
-      <p><b>8. Выгрузка.</b> На вкладках «Товары» и «ПФ» кнопка «Сохранить и выгрузить результаты» сохраняет подсчёт локально и отправляет его на сервер.</p>
+      <p><b>8. Выгрузка.</b> На вкладках «Товары» и «ПФ» кнопка «Сохранить - выгрузить - очистить подсчёт» сохраняет подсчёт локально, отправляет его на сервер и после успешной выгрузки сбрасывает введённые данные своей вкладки.</p>
       <p><b>9. Приём.</b> На «Главной» кнопка «Принять результаты с сервера» забирает выгруженные данные, суммирует их с текущими и очищает сервер.</p>
       <p><b>10. Заполнение бланка.</b> На «Главной» выбери шаблон бланка (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие», форматирование сохранится.</p>
       <p><b>11. Сброс.</b> Кнопки «Очистить расчёт данные» и «Сбросить введённые данные» очищают данные подсчёта.</p>
@@ -486,8 +492,6 @@
 </div>
 
 <input type="file" id="blankFile" accept=".xls,.xlsx">
-<button id="btnHome" class="tohome" title="На главную">🏠</button>
-<button id="btnTop" class="totop" title="Наверх">↑</button>
 
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
@@ -663,6 +667,17 @@ function delRecord(date){
   setHist(getHist().filter(x => x.date !== date));
   renderHist();
 }
+function histItemHtml(r){
+  const c = computeTotals(r.pf || {});
+  const fact = r.fact || {};
+  const nFact = Object.values(fact).filter(v=> v > 0).length;
+  return '<div class="hist">'
+       +   '<div class="hd">'+esc(r.date)+'</div>'
+       +   '<div class="hs">Остатков: '+nFact+' · ПФ: '+c.cnt+' · товаров из ПФ: '+Object.keys(c.totals).length+' · '+fmt(c.vol)+' л</div>'
+       +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
+       +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
+       + '</div>';
+}
 function renderHist(){
   const box = document.getElementById("history");
   const hist = getHist();
@@ -670,18 +685,14 @@ function renderHist(){
     box.innerHTML = '<div class="empty">Сохранений пока нет</div>';
     return;
   }
-  let h = '';
-  hist.forEach(r=>{
-    const c = computeTotals(r.pf || {});
-    const fact = r.fact || {};
-    const nFact = Object.values(fact).filter(v=> v > 0).length;
-    h += '<div class="hist">'
-       +   '<div class="hd">'+esc(r.date)+'</div>'
-       +   '<div class="hs">Остатков: '+nFact+' · ПФ: '+c.cnt+' · товаров из ПФ: '+Object.keys(c.totals).length+' · '+fmt(c.vol)+' л</div>'
-       +   '<button data-date="'+esc(r.date)+'" class="load">Загрузить</button>'
-       +   '<button data-date="'+esc(r.date)+'" class="del">✕</button>'
-       + '</div>';
-  });
+  const last = hist[hist.length - 1];
+  const rest = hist.slice(0, hist.length - 1);
+  let h = histItemHtml(last);
+  if(rest.length){
+    h += '<details class="histmore"><summary>Ранее (' + rest.length + ')</summary>';
+    rest.slice().reverse().forEach(r => { h += histItemHtml(r); });
+    h += '</details>';
+  }
   box.innerHTML = h;
 }
 
@@ -867,7 +878,7 @@ function buildPfIndex(){
   return m;
 }
 
-function sbSnapshot(){
+function sbSnapshotFact(){
   const o = {};
   const add = function(k, v){
     const n = toNum(v);
@@ -882,6 +893,16 @@ function sbSnapshot(){
     const cname = canon(name);
     if(cname) add(cname, v);
   }
+  return o;
+}
+function sbSnapshotPf(){
+  const o = {};
+  const add = function(k, v){
+    const n = toNum(v);
+    if(isNaN(n)) return;
+    const cur = (o[k] !== undefined) ? toNum(o[k]) : 0;
+    o[k] = Math.round((cur + n)*1000)/1000;
+  };
   const pf = getInputs();
   for(const k in pf){
     const cname = canon(k);
@@ -1010,26 +1031,32 @@ async function sbJoinSession(){
   toast("Сессия " + code + " — склад и дата подставлены");
 }
 
-async function saveAndUpload(){
+async function saveAndUploadFact(){
   invSave();
-  await sbUpload();
+  const ok = await sbUpload(sbSnapshotFact());
+  if(ok) clearFact();
+}
+async function saveAndUploadPf(){
+  invSave();
+  const ok = await sbUpload(sbSnapshotPf());
+  if(ok) resetAll();
 }
 
-async function sbUpload(){
-  const c = sbClient(); if(!c) return;
+async function sbUpload(snap){
+  const c = sbClient(); if(!c) return false;
   const guard = sbSessionGuard();
-  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return;
+  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return false;
   const wk = sbWarehouseKey();
   const date = sbReportDate();
-  const snap = sbSnapshot();
   sbSetStatus("Выгрузка…", true);
   let error;
   try{ ({ error } = await c.rpc("upsert_fact", { p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap })); }
   catch(e){ error = e; }
-  if(error){ sbSetStatus("Ошибка выгрузки: " + (error.message || error), false); toast("Ошибка выгрузки — проверь сеть"); return; }
+  if(error){ sbSetStatus("Ошибка выгрузки: " + (error.message || error), false); toast("Ошибка выгрузки — проверь сеть"); return false; }
   const n = Object.keys(snap).length;
   sbSetStatus("Выгружено (" + n + " поз.)", true);
   toast(n ? ("Выгружено " + n + " позиций на сервер") : "Нет данных для выгрузки");
+  return true;
 }
 
 function applyFact(fact){
@@ -1453,13 +1480,17 @@ function invReset(e){
 
 function invClearFact(e){
   twoStep(e.currentTarget, "Сбросить введённые данные", ()=>{
-    invState.fact = {};
-    invState.pfAdd = {};
-    invSaveState();
-    renderInvGroups();
-    updateInvStats();
+    clearFact();
     toast("Введённые данные сброшены");
   });
+}
+
+function clearFact(){
+  invState.fact = {};
+  invState.pfAdd = {};
+  invSaveState();
+  renderInvGroups();
+  updateInvStats();
 }
 
 function toggleCountGroups(){
@@ -2013,7 +2044,7 @@ function initInv(){
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
   document.getElementById("btnSessionJoin").addEventListener("click", sbJoinSession);
-  document.getElementById("btnInvSave2").addEventListener("click", saveAndUpload);
+  document.getElementById("btnInvSave2").addEventListener("click", saveAndUploadFact);
   document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
 document.getElementById("btnInvClearFact").addEventListener("click", invClearFact);
@@ -2031,10 +2062,13 @@ document.getElementById("btnCountClearFact").addEventListener("click", invClearF
   });
 }
 
-document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
+document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=>{
+  if(b.classList.contains("active")){ window.scrollTo({top:0, behavior:"smooth"}); }
+  else { switchTab(b.dataset.tab); }
+}));
 
 /* ---- инициализация калькулятора ---- */
-document.getElementById("btnPfUpload").addEventListener("click", saveAndUpload);
+document.getElementById("btnPfUpload").addEventListener("click", saveAndUploadPf);
 document.getElementById("btnReset").addEventListener("click", function(e){ twoStep(e.currentTarget, "Сбросить", resetAll); });
 document.getElementById("btnPrint").addEventListener("click", doPrint);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
@@ -2054,16 +2088,6 @@ recompute();
 initInv();
 renderHist();
 renderSessionInfo();
-
-const btnTop = document.getElementById("btnTop");
-const btnHome = document.getElementById("btnHome");
-window.addEventListener("scroll", ()=>{
-  const show = window.scrollY > 400;
-  btnTop.classList.toggle("show", show);
-  btnHome.classList.toggle("show", show);
-});
-btnTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
-btnHome.addEventListener("click", ()=>{ switchTab("inv"); window.scrollTo({top:0, behavior:"smooth"}); });
 
 </script>
 </body>
