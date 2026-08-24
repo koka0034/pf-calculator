@@ -1989,11 +1989,6 @@ function nameMap(list){
   }
   return map;
 }
-function rptClean(x){
-  const r = Math.round(x*1000)/1000;
-  if(Math.abs(r - Math.round(r)) < 1e-9) return Math.round(r);
-  return r;
-}
 async function runReport(){
   const st = document.getElementById("rptStatus");
   const det = document.getElementById("rptDetail");
@@ -2027,7 +2022,7 @@ async function runReport(){
         if(!hit) return;
         const num = toNum(hit.val);
         if(isNaN(num)){ blankNoVal++; return; }
-        row.getCell(5).value = rptClean(num);
+        row.getCell(5).value = num;
         used.add(k);
         filled++;
       });
