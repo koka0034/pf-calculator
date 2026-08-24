@@ -991,7 +991,12 @@ function sbApplySession(s){
   if(RESTAURANTS.includes(restaurant)) invRestaurant = restaurant;
   localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   invRest = rest;
-  INV_GROUPS = invLoadDict();
+  if(s && Array.isArray(s.dict) && s.dict.length){
+    INV_GROUPS = s.dict;
+    invPersistDict();
+  } else {
+    INV_GROUPS = invLoadDict();
+  }
   invState = invLoadState(invRest);
   if(s && s.report_date) invState.date = s.report_date;
   renderRestSelect();
@@ -1007,7 +1012,7 @@ async function sbCreateSession(){
   const date = sbReportDate();
   sbSetStatus("Создание сессии…", true);
   let error;
-  try{ ({ error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId() })); }
+  try{ ({ error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_dict: INV_GROUPS })); }
   catch(e){ error = e; }
   if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Не удалось создать сессию — проверь сеть"); return; }
   sbSetSession(code, wk, date);
