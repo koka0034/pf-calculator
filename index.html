@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0e1116">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -89,14 +89,14 @@
      display:flex;align-items:center;justify-content:center;user-select:none}
   .stepper button:active{background:var(--color-active)}
   .stepper input{width:74px;height:38px;border-radius:10px;border:1px solid var(--line);
-     background:var(--input);color:var(--txt);text-align:center;font-size:15px;
+     background:var(--input);color:var(--txt);text-align:center;font-size:16px;
      -moz-appearance:textfield}
   .stepper input::-webkit-outer-spin-button,
   .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .u{font-size:12px;color:var(--muted);width:16px;text-align:center}
   .savebar{display:flex;gap:8px;margin-top:16px}
   .savebar input{flex:1;height:44px;border-radius:12px;border:1px solid var(--line);
-     background:var(--input);color:var(--txt);padding:0 12px;font-size:15px}
+     background:var(--input);color:var(--txt);padding:0 12px;font-size:16px}
   .savebar button{flex:1;height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
      background:var(--card);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
   .savebar button.primary{background:transparent;color:var(--color-amber);border-color:var(--color-amber)}
@@ -167,7 +167,7 @@
   .inv-top{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:6px}
   .inv-top label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   .inv-top select,.inv-top input{width:100%;height:44px;border-radius:11px;border:1px solid var(--line);
-       background:var(--input);color:var(--txt);padding:0 12px;font-size:15px;margin-bottom:8px}
+       background:var(--input);color:var(--txt);padding:0 12px;font-size:16px;margin-bottom:8px}
   .inv-top .row{display:flex;gap:8px}
   .inv-top .row input{flex:1;margin-bottom:0}
   .inv-top .row button{height:44px;padding:0 14px;border-radius:11px;border:1px solid var(--line);
@@ -187,7 +187,7 @@
   .goods th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:center;border-bottom:1px solid var(--line)}
   .goods td.gn{text-align:left;padding-right:6px;word-break:break-word}
   .goods input{width:100%;max-width:76px;height:34px;border-radius:8px;border:1px solid var(--line);
-       background:var(--input);color:var(--txt);text-align:center;font-size:13px;padding:0 2px}
+       background:var(--input);color:var(--txt);text-align:center;font-size:16px;padding:0 2px}
   .goods .fstep{display:flex;align-items:center;justify-content:center;gap:4px}
   .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
   .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
@@ -215,7 +215,7 @@
   .uploadbtn:active{background:var(--color-amber);color:var(--on-amber)}
   .danger{background:var(--color-red-dark) !important;color:#fff !important;border-color:var(--color-red-dark) !important}
   .invsearch{width:100%;height:40px;border-radius:10px;border:1px solid var(--line);
-       background:var(--input);color:var(--txt);padding:0 12px;font-size:14px;margin:6px 0 4px}
+       background:var(--input);color:var(--txt);padding:0 12px;font-size:16px;margin:6px 0 4px}
   .blankimp{width:100%;height:44px;border-radius:12px;border:1px solid var(--color-blue);
        background:transparent;color:var(--color-blue);font-weight:600;cursor:pointer;margin-top:8px}
   .blankimp:hover{border-color:var(--color-blue-hover);color:var(--color-blue-hover)}
@@ -281,10 +281,16 @@
     font-size:14px;line-height:1;cursor:pointer;vertical-align:middle;flex:none}
   .sess-copy:active{background:var(--line)}
   .sesscode{flex:1;min-width:120px;height:44px;border-radius:12px;border:1px solid var(--line);
-    background:var(--input);color:var(--txt);padding:0 10px;font-size:15px;text-align:center;
+    background:var(--input);color:var(--txt);padding:0 10px;font-size:16px;text-align:center;
     text-transform:uppercase;letter-spacing:3px}
   .sesscode::placeholder{letter-spacing:1px;text-transform:none}
   .sessbox p.sub{margin:8px 0 0}
+  /* iOS: плавающая кнопка «Дальше» — на числовой клавиатуре iPhone нет Enter */
+  #iosNext{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));
+    height:48px;padding:0 20px;border-radius:24px;border:1px solid var(--color-amber);
+    background:var(--color-amber);color:var(--on-amber);font-size:16px;font-weight:700;
+    cursor:pointer;display:none;z-index:60;box-shadow:0 6px 18px -6px rgba(0,0,0,.6)}
+  #iosNext.show{display:block}
   .impbox{padding:0 14px 14px}
   .impbox .imphd{margin:0 0 8px}
   .impwrap{border:1px solid var(--line);border-radius:14px;margin:10px 0;background:var(--card);overflow:hidden}
@@ -322,7 +328,7 @@
 
   /* tap targets 44px */
   .goods .fstep button{width:44px;min-width:44px;height:44px;font-size:20px}
-  .goods .fstep input{width:58px;max-width:58px;height:44px;font-size:15px}
+  .goods .fstep input{width:58px;max-width:58px;height:44px;font-size:16px}
   .stepper button{width:44px;height:44px;font-size:21px}
   .stepper input{height:44px}
   .imphd{text-align:center;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);margin:16px 0 8px}
@@ -768,8 +774,13 @@ function doPrint(){
   window.print();
 }
 
-function resetAll(){
-  ALL_PF.forEach((r,i)=>setQ(i, 0));
+function resetAll(uploaded){
+  if(uploaded && typeof uploaded === "object"){
+    // Обнуляем только выгруженные позиции; введённое во время выгрузки остаётся.
+    ALL_PF.forEach((r,i)=>{ const cn = canon(r.n); if(cn && ((PF_PREFIX + cn) in uploaded)) setQ(i, 0); });
+  } else {
+    ALL_PF.forEach((r,i)=>setQ(i, 0));
+  }
   recompute();
   persistPfInputs();
 }
@@ -1080,19 +1091,37 @@ async function sbJoinSession(){
   toast("Сессия " + code + " — склад и дата подставлены");
 }
 
+let sbBusy = false;
+const SB_SYNC_BTNS = ["btnAccept","btnClearServer","btnSessionCreate","btnSessionJoin","btnInvSave2","btnPfUpload"];
+function sbSetBusy(on){
+  sbBusy = on;
+  SB_SYNC_BTNS.forEach(function(id){ const b = document.getElementById(id); if(b) b.disabled = on; });
+}
+
 async function saveAndUploadFact(){
+  if(sbBusy) return;
   invSave();
-  const ok = await sbUpload(sbSnapshotFact());
-  if(ok) clearFact();
+  const snap = sbSnapshotFact();
+  sbSetBusy(true);
+  try{
+    const ok = await sbUpload(snap);
+    if(ok) clearFact(snap);
+  } finally { sbSetBusy(false); }
 }
 async function saveAndUploadPf(){
+  if(sbBusy) return;
   invSave();
-  const ok = await sbUpload(sbSnapshotPf());
-  if(ok) resetAll();
+  const snap = sbSnapshotPf();
+  sbSetBusy(true);
+  try{
+    const ok = await sbUpload(snap);
+    if(ok) resetAll(snap);
+  } finally { sbSetBusy(false); }
 }
 
 async function sbUpload(snap){
   const c = sbClient(); if(!c) return false;
+  if(!snap || !Object.keys(snap).length){ sbSetStatus("Нет данных для выгрузки", false); toast("Нет данных для выгрузки — введите хотя бы одну позицию"); return false; }
   const guard = sbSessionGuard();
   if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return false;
   const wk = sbWarehouseKey();
@@ -1119,16 +1148,24 @@ function applyFact(fact){
   renderInvDiff();
 }
 
-async function sbAccept(){
+function sbAccept(e){
+  if(sbBusy) return;
+  const btn = e && e.currentTarget;
+  twoStep(btn, "Принять результаты с сервера", ()=>{ doSbAccept(); }, "Принять и очистить сервер?");
+}
+async function doSbAccept(){
+  if(sbBusy) return;
   const c = sbClient(); if(!c) return;
   const guard = sbSessionGuard();
   if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return;
   const wk = sbWarehouseKey();
   const date = sbReportDate();
+  sbSetBusy(true);
   sbSetStatus("Получение…", true);
   let data, error;
   try{ ({ data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date })); }
   catch(e){ error = e; }
+  finally { sbSetBusy(false); }
   if(error){ sbSetStatus("Ошибка приёма: " + (error.message || error), false); toast("Ошибка приёма — проверь сеть"); return; }
   const res = (data && typeof data === "object") ? data : {};
   const nameKey = buildNameKey();
@@ -1166,10 +1203,18 @@ async function sbAccept(){
   invSaveState();
   renderInvGroups(); updateInvStats(); renderInvDiff();
   const total = Object.keys(res).length;
-  const msg = total ? ("Принято " + total + " знач.") : "На сервере нет данных";
-  if(unmatched.length) msg += " · не совпало " + unmatched.length;
+  if(unmatched.length){
+    try{
+      const rec = { at: new Date().toISOString(), warehouse: wk, date: date, items: unmatched };
+      const prev = JSON.parse(localStorage.getItem("sb_unmatched") || "[]");
+      prev.push(rec);
+      localStorage.setItem("sb_unmatched", JSON.stringify(prev.slice(-50)));
+    }catch(e){}
+  }
+  let msg = total ? ("Принято " + total + " знач.") : "На сервере нет данных";
+  if(unmatched.length) msg += " · не совпало " + unmatched.length + " (сохранены)";
   sbSetStatus(msg, true);
-  toast(total ? ("Принято " + total + " значений" + (unmatched.length ? (", не совпало " + unmatched.length) : "") + " с сервера") : "На сервере нет данных для приёма");
+  toast(total ? ("Принято " + total + " значений" + (unmatched.length ? (", не совпало " + unmatched.length + " — сохранены локально") : "") + " с сервера") : "На сервере нет данных для приёма");
 }
 
 async function sbClear(e){
@@ -1496,7 +1541,7 @@ function invSave(){
   invSaveState();
   saveRecord();
 }
-function twoStep(btn, label, run){
+function twoStep(btn, label, run, confirmText){
   if(!btn){ run(); return; }
   if(btn.dataset.armed === "1"){
     btn.dataset.armed = "";
@@ -1507,7 +1552,7 @@ function twoStep(btn, label, run){
     return;
   }
   btn.dataset.armed = "1";
-  btn.textContent = "Точно сбросить?";
+  btn.textContent = confirmText || "Точно сбросить?";
   btn.classList.add("danger");
   clearTimeout(btn._armT);
   btn._armT = setTimeout(()=>{
@@ -1534,8 +1579,19 @@ function invClearFact(e){
   });
 }
 
-function clearFact(){
-  invState.fact = {};
+function clearFact(uploaded){
+  if(uploaded && typeof uploaded === "object"){
+    // Стираем только то, что реально ушло на сервер; ввод, сделанный во время
+    // выгрузки, сохраняется (защита от гонки).
+    const f = invState.fact || {};
+    for(const k in f){
+      const name = k.split("||").slice(1).join("||");
+      const cname = canon(name);
+      if(cname && (cname in uploaded)) delete f[k];
+    }
+  } else {
+    invState.fact = {};
+  }
   invState.pfAdd = {};
   invSaveState();
   renderInvGroups();
@@ -2132,6 +2188,39 @@ recompute();
 initInv();
 renderHist();
 renderSessionInfo();
+
+/* iOS P0-2: числовая клавиатура iPhone не имеет Enter → механика «Enter→следующее поле»
+   там не работает. Показываем плавающую кнопку «Дальше →» при фокусе числового поля.
+   Только для iOS; на Android Enter работает и кнопка не нужна. */
+(function(){
+  const isIOS = /iP(hone|ad|od)/.test(navigator.platform)
+    || (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
+  if(!isIOS) return;
+  const btn = document.createElement("button");
+  btn.id = "iosNext";
+  btn.type = "button";
+  btn.textContent = "Дальше →";
+  document.body.appendChild(btn);
+  let cur = null;
+  function isCountField(el){
+    return el && el.tagName === "INPUT"
+      && (el.classList.contains("factinp") || el.hasAttribute("data-i"));
+  }
+  document.addEventListener("focusin", function(e){
+    if(isCountField(e.target)){ cur = e.target; btn.classList.add("show"); }
+  });
+  document.addEventListener("focusout", function(){
+    setTimeout(function(){
+      if(!isCountField(document.activeElement)) btn.classList.remove("show");
+    }, 120);
+  });
+  btn.addEventListener("mousedown", function(e){ e.preventDefault(); });
+  btn.addEventListener("click", function(){
+    if(!cur) return;
+    if(cur.classList.contains("factinp")) focusNextFact(cur);
+    else if(cur.hasAttribute("data-i")) focusNextPf(Number(cur.dataset.i));
+  });
+})();
 
 </script>
 </body>
