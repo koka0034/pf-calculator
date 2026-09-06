@@ -3,56 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#0e1116">
+<meta name="theme-color" content="#17110B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Учёт бара">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>Калькулятор ПФ Товары Инвентаризация и сверка остатков</title>
 <style>
   :root{
-    /* поверхности */
-    --bg:#0e1116; --card:#171c24; --card2:#1c2230; --line:#262d3a;
-    --txt:#e8eaed; --muted:#98a2b0; --input:#0b0e13;
+    /* поверхности — тёплая эспрессо-база «барный характер» */
+    --bg:#17110B; --card:#241B12; --card2:#2C2116; --line:#34281B;
+    --txt:#ECE3D3; --muted:#9E8F79; --input:#120D08;
 
     /* семантические роли */
-    --color-amber:#e0a63f;      /* primary — главное действие */
-    --color-green:#53d39a;      /* success — сохранено/положительное */
-    --color-red:#f0706b;        /* danger — ошибка/отрицательное */
-    --color-red-dark:#d32f2f;   /* danger — заливка подтверждения/печать */
-    --color-blue:#2f6fd0;       /* info — импорт/вспомогательное */
-    --color-blue-hover:#4d85e0;
-    --color-active:#232a37;     /* нажатие степпера */
-    --on-amber:#171103;         /* текст на янтарном */
-    --on-green:#06120c;         /* текст на зелёном */
+    --color-amber:#C9A24B;      /* primary — латунь, главное действие */
+    --color-amber-2:#E7C97A;    /* латунь светлая — текст-акцент/hover */
+    --color-green:#84AE6E;      /* success — бутылочное стекло, излишек (+) */
+    --color-red:#C86257;        /* danger — вино, нехватка (−) */
+    --color-red-dark:#9E3B32;   /* danger — заливка подтверждения/печать */
+    --color-blue:#C9A24B;       /* info → латунь (синего в барной гамме нет) */
+    --color-blue-hover:#E7C97A;
+    --color-active:#3A2C1D;     /* нажатие степпера */
+    --on-amber:#1A1206;         /* текст на латуни */
+    --on-green:#0E1509;         /* текст на зелёном */
 
     /* обратная совместимость */
     --acc:var(--color-amber);
     --acc2:var(--color-green);
     --danger:var(--color-red);
+
+    /* типографика «барного характера» */
+    --font-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --font-display:"Fraunces",Georgia,"Times New Roman",serif;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{background:var(--bg); color:var(--txt); color-scheme:dark;
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family:var(--font-body);
     font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;}
   .wrap{max-width:680px;margin:0 auto;padding:16px 14px 120px}
   header{padding:10px 2px 12px}
   .hdrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .hd-title{flex:1;min-width:0}
-  h1{font-size:21px;margin:0 0 4px;font-weight:700;letter-spacing:-.3px}
+  h1{font-family:var(--font-display);font-optical-sizing:auto;font-size:30px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em;line-height:1.05}
   .sub{color:var(--muted);font-size:13px}
-  .tabs{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;margin:0 0 14px;padding:8px 0 10px}
-  .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-       min-height:56px;border:1px solid var(--color-amber);border-radius:14px;background:var(--card);
-       color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
-  .tab-ic{font-size:22px;line-height:1}
-  .tab-btn.active{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
-  .tab-btn.ic{min-width:56px;width:56px;padding:0}
-  .tab-btn.small{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;border-radius:12px;flex:0 0 auto}
-  .tab-btn.small .tab-ic{font-size:20px}
+  .tabs{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 14px;padding:8px 0 10px;background:var(--bg)}
+  .tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+       min-height:52px;border:1px solid var(--line);border-radius:14px;background:var(--card);
+       color:var(--muted);cursor:pointer;padding:8px 4px;text-align:center;line-height:1.15}
+  .tab-btn .tab-t{font-size:14px;font-weight:600}
+  .tab-btn .tab-c{font-size:11px;color:var(--muted);opacity:.8;font-variant-numeric:tabular-nums}
+  .tab-btn.active{border-color:var(--color-amber);background:var(--card2)}
+  .tab-btn.active .tab-t{color:var(--color-amber-2)}
+  .tab-btn.active .tab-c{color:var(--color-amber);opacity:1}
+  .tab-btn.small{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;border-radius:12px;flex:0 0 auto;border-color:var(--line)}
+  .tab-btn.small .tab-t{font-size:13px;font-weight:700}
   .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
   .instr p:last-child{margin-bottom:0}
   .instr h3{margin:16px 0 6px;font-size:15px;font-weight:700;color:var(--txt)}
@@ -77,8 +87,8 @@
         padding:10px 14px;min-width:108px;flex:1}
   .stat b{display:block;font-size:20px;color:var(--acc)}
   .stat span{font-size:12px;color:var(--muted)}
-  h2{font-size:15px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);
-     margin:22px 2px 10px;font-weight:700}
+  h2{font-family:var(--font-display);font-size:20px;letter-spacing:-.005em;color:var(--txt);
+     margin:22px 2px 10px;font-weight:600}
   .pf{background:var(--card);border:1px solid var(--line);border-radius:14px;
       padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:12px}
   .pf.active{border-color:var(--acc)}
@@ -194,6 +204,20 @@
   .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px;white-space:nowrap}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
+  /* строка-ведомость (режим сверки): имя во всю ширину, ниже метрики */
+  .goods.ledger{display:block}
+  .lrow{padding:12px 4px;border-bottom:1px solid var(--line)}
+  .lrow:last-child{border-bottom:none}
+  .lname{font-size:15px;line-height:1.3;color:var(--txt);font-weight:500;margin-bottom:9px}
+  .lname .unit{color:var(--muted);font-weight:400;font-size:13px}
+  .lmetr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .lmetr .fstep{margin-right:auto}
+  .lpf,.ldiff{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+  .lcap{font-size:10.5px;color:var(--muted);text-transform:none;margin-bottom:2px}
+  .lpf .pfadd{font-size:15px;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .ldiff .diff{font-family:var(--font-display);font-weight:600;font-size:22px;
+     font-variant-numeric:tabular-nums;letter-spacing:-.01em;min-width:auto;white-space:nowrap}
+  .ldiff .diff.zero{color:#6b5c44;font-weight:400}
   .diff.zero{color:var(--muted)}
   .gn .unit{color:var(--muted);font-size:12px}
   .gdel{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px}
@@ -343,14 +367,14 @@
         <h1>Инвентаризация</h1>
         <div class="sub">Учёт остатков: разборка ПФ в товары, подсчёт и сверка</div>
       </div>
-      <button id="btnHist" class="tab-btn small" data-tab="hist" title="Инструкции"><span class="tab-ic">📖</span></button>
+      <button id="btnHist" class="tab-btn small" data-tab="hist" title="Инструкции"><span class="tab-t">?</span></button>
     </div>
   </header>
 
   <nav class="tabs" id="navTabs">
-    <button class="tab-btn ic active" data-tab="inv" title="Главная"><span class="tab-ic">🏠</span></button>
-    <button class="tab-btn" data-tab="count"><span class="tab-ic">📦</span><span>Товары</span></button>
-    <button class="tab-btn" data-tab="pf"><span class="tab-ic">🧪</span><span>ПФ</span></button>
+    <button class="tab-btn active" data-tab="inv"><span class="tab-t">Главная</span><span class="tab-c" id="tabcInv">склад · дата</span></button>
+    <button class="tab-btn" data-tab="count"><span class="tab-t">Товары</span><span class="tab-c" id="tabcCount">0 / 0</span></button>
+    <button class="tab-btn" data-tab="pf"><span class="tab-t">ПФ</span><span class="tab-c" id="tabcPf">0 / 0</span></button>
   </nav>
 
   <section id="tab-inv" class="pane">
@@ -1361,58 +1385,86 @@ function renderGroupsInto(boxId, showDiff){
     const body = document.createElement("div");
     body.className = "gbody";
 
-    const tbl = document.createElement("table");
+    const tbl = document.createElement(showDiff ? "div" : "table");
     tbl.className = "goods";
-    tbl.innerHTML = showDiff
-      ? '<tr><th class="gn">Товар</th><th>Факт</th><th>из ПФ</th><th>±</th></tr>'
-      : '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+    if(!showDiff) tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+    if(showDiff) tbl.classList.add("ledger");
     goods.forEach((gd)=>{
       const key = goodKey(g.g, gd.n);
-      const tr = document.createElement("tr");
-      const tdName = document.createElement("td"); tdName.className = "gn";
-      const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
-      const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
-      tdName.append(nmSpan, unSpan);
 
-      const tdFact = document.createElement("td");
-      const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next"; f.dataset.key = key;
-      f.value = invState.fact[key] !== undefined ? invState.fact[key] : "";
-      f.addEventListener("input", ()=>{
-        if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
-        updateDiffByKey(key); updateInvStats(); invSaveState();
-        syncFactTwins(key, f);
-      });
-      f.addEventListener("change", ()=>{
-        let n = toNum(f.value) || 0;
-        if(n < 0) n = 0;
-        if(n === 0){ delete invState.fact[key]; f.value = ""; }
-        else { invState.fact[key] = n; f.value = n; }
-        updateDiffByKey(key); updateInvStats(); invSaveState();
-        syncFactTwins(key, f);
-      });
-      f.addEventListener("keydown", (e)=>{
-        if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
-      });
-      const st = document.createElement("div"); st.className = "stepper fstep";
-      const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
-      repeatOn(bm, ()=>stepFact(key, f, -stepFor(gd.u)));
-      const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
-      repeatOn(bp, ()=>stepFact(key, f, stepFor(gd.u)));
-      st.append(bm, f, bp);
-      tdFact.appendChild(st);
+      // общий конструктор поля факта + степпера (используется в обоих режимах)
+      const buildFactInput = ()=>{
+        const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next"; f.dataset.key = key;
+        f.value = invState.fact[key] !== undefined ? invState.fact[key] : "";
+        f.addEventListener("input", ()=>{
+          if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
+          updateDiffByKey(key); updateInvStats(); invSaveState();
+          syncFactTwins(key, f);
+        });
+        f.addEventListener("change", ()=>{
+          let n = toNum(f.value) || 0;
+          if(n < 0) n = 0;
+          if(n === 0){ delete invState.fact[key]; f.value = ""; }
+          else { invState.fact[key] = n; f.value = n; }
+          updateDiffByKey(key); updateInvStats(); invSaveState();
+          syncFactTwins(key, f);
+        });
+        f.addEventListener("keydown", (e)=>{
+          if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
+        });
+        return f;
+      };
+      const buildStepper = (f)=>{
+        const st = document.createElement("div"); st.className = "stepper fstep";
+        const bm = document.createElement("button"); bm.type = "button"; bm.textContent = "−";
+        repeatOn(bm, ()=>stepFact(key, f, -stepFor(gd.u)));
+        const bp = document.createElement("button"); bp.type = "button"; bp.textContent = "+";
+        repeatOn(bp, ()=>stepFact(key, f, stepFor(gd.u)));
+        st.append(bm, f, bp);
+        return st;
+      };
 
-      tr.appendChild(tdName);
-      tr.appendChild(tdFact);
       if(showDiff){
-        const tdPf = document.createElement("td"); tdPf.className = "num pfadd";
-        tdPf.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "";
-        tr.appendChild(tdPf);
-        const tdDiff = document.createElement("td"); tdDiff.className = "diff";
-        tr.appendChild(tdDiff);
+        // строка-ведомость: имя во всю ширину, ниже метрики (факт · из ПФ · ±)
+        const row = document.createElement("div"); row.className = "lrow";
+        const nameEl = document.createElement("div"); nameEl.className = "lname";
+        const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
+        const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
+        nameEl.append(nmSpan, unSpan);
+
+        const metr = document.createElement("div"); metr.className = "lmetr";
+        const f = buildFactInput();
+        metr.appendChild(buildStepper(f));
+
+        const pfWrap = document.createElement("div"); pfWrap.className = "lpf";
+        pfWrap.innerHTML = '<span class="lcap">из ПФ</span>';
+        const pfVal = document.createElement("span"); pfVal.className = "num pfadd";
+        pfVal.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "—";
+        pfWrap.appendChild(pfVal);
+
+        const dWrap = document.createElement("div"); dWrap.className = "ldiff";
+        dWrap.innerHTML = '<span class="lcap">±</span>';
+        const tdDiff = document.createElement("span"); tdDiff.className = "diff";
+        dWrap.appendChild(tdDiff);
         (diffCells[key] = diffCells[key] || []).push(tdDiff);
+
+        metr.append(pfWrap, dWrap);
+        row.append(nameEl, metr);
+        tbl.appendChild(row);
         updateDiffByKey(key);
+      } else {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td"); tdName.className = "gn";
+        const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
+        const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
+        tdName.append(nmSpan, unSpan);
+        const tdFact = document.createElement("td");
+        const f = buildFactInput();
+        tdFact.appendChild(buildStepper(f));
+        tr.appendChild(tdName);
+        tr.appendChild(tdFact);
+        tbl.appendChild(tr);
       }
-      tbl.appendChild(tr);
     });
     body.appendChild(tbl);
 
@@ -1477,6 +1529,13 @@ function updateInvStats(){
   const cFillEl = document.getElementById("countProgFill");
   if(cPctEl) cPctEl.textContent = pct + "%";
   if(cFillEl) cFillEl.style.width = pct + "%";
+  // счётчики во вкладках
+  const tc = document.getElementById("tabcCount");
+  if(tc) tc.textContent = counted + " / " + total;
+  const ti = document.getElementById("tabcInv");
+  if(ti) ti.textContent = (invRest || "склад") + " · " + (counted ? (pct + "%") : "старт");
+  const tp = document.getElementById("tabcPf");
+  if(tp){ try{ const pfa = getInputs(); tp.textContent = Object.keys(pfa).length + " / " + ALL_PF.length; }catch(e){} }
   updateGroupCounters();
   renderInvDiff();
 }
