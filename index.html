@@ -381,15 +381,13 @@
   </header>
 
   <nav class="tabs" id="navTabs">
-    <button class="tab-btn active" data-tab="inv" data-adminonly="1"><span class="tab-t">Управление</span><span class="tab-c" id="tabcInv">сессия</span></button>
+    <button class="tab-btn active" data-tab="inv"><span class="tab-t">Главная</span><span class="tab-c" id="tabcInv">сессия</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-t">Товары</span><span class="tab-c" id="tabcCount">0 / 0</span></button>
     <button class="tab-btn" data-tab="pf"><span class="tab-t">ПФ</span><span class="tab-c" id="tabcPf">0 / 0</span></button>
   </nav>
 
   <div class="rolebar" id="roleBar">
-    <span class="role-badge" id="roleBadge">Руководитель</span>
     <span class="sess-badge" id="sessBadge"></span>
-    <button type="button" class="role-switch" id="btnRoleSwitch">сменить роль</button>
   </div>
 
   <section id="tab-inv" class="pane">
@@ -414,7 +412,7 @@
           <input type="text" id="sessionCode" class="sesscode" placeholder="Код сессии" maxlength="8" autocomplete="off" spellcheck="false">
           <button id="btnSessionJoin" class="blue">Войти в сессию</button>
         </div>
-        <p class="sub">Руководитель: выбери склад → «Создать сессию» и передай код работникам (список товаров передаётся автоматически). Работник: введи код → «Войти в сессию».</p>
+        <p class="sub">Инициатор: выбери склад → «Создать сессию» и передай код тем, кто считает (список товаров передаётся автоматически). Участник: введи код → «Войти в сессию».</p>
       </div>
     </div>
 
@@ -473,11 +471,10 @@
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
     </div>
     <button id="btnInvSave2" class="uploadbtn">Выгрузить мой подсчёт</button>
-    <button id="btnLoadLast" class="grpadd">Загрузить последний выгруз</button>
-    <p class="sub" id="uploadHint">Сохраняет подсчёт на сервер руководителю и очищает поля. «Загрузить последний выгруз» вернёт последнюю отправку обратно.</p>
+    <p class="sub" id="uploadHint">Отправляет подсчёт на сервер (нужна активная сессия) и очищает поля.</p>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
-    <button id="btnCountMode" class="grpadd" data-adminonly="1">Показать сверку (из ПФ / ±)</button>
+    <button id="btnCountMode" class="grpadd">Показать сверку (из ПФ / ±)</button>
     <div id="invCountGroups"></div>
     <button id="btnCountClearFact" class="fwbtn burgundy">Очистить только товары</button>
   </section>
@@ -485,11 +482,10 @@
   <section id="tab-pf" class="pane hidden">
     <div class="stats">
       <div class="stat"><b id="stPf">0</b><span>ПФ с остатком</span></div>
-      <div class="stat" data-adminonly="1"><b id="stTov">0</b><span>товаров в раскладке</span></div>
-      <div class="stat" data-adminonly="1"><b id="stVol">0</b><span>литров ПФ всего</span></div>
+      <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
+      <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
     </div>
     <button id="btnPfUpload" class="uploadbtn">Выгрузить мой подсчёт</button>
-    <button id="btnLoadLastPf" class="grpadd">Загрузить последний выгруз</button>
 
     <h2 class="h2big">Остатки настоек (л)</h2>
     <div id="pfList"></div>
@@ -499,10 +495,10 @@
 
     <div class="bar">
       <button id="btnReset" class="burgundy">Очистить только ПФ</button>
-      <button id="btnPrint" class="blue" data-adminonly="1">Печать отчёта</button>
+      <button id="btnPrint" class="blue">Печать отчёта</button>
     </div>
 
-    <div data-adminonly="1">
+    <div>
       <h2>Итог по товарам</h2>
       <div class="panel"><div id="result"></div></div>
 
@@ -519,31 +515,27 @@
       <h3>Назначение</h3>
       <p>Программа для инвентаризации: бар, кухня, посуда, карты/форма и другое имущество. Работает и в одиночку, и в команде — совместная инвентаризация ведётся по коду сессии.</p>
 
-      <h3>Роли</h3>
-      <p><b>Руководитель</b> создаёт сессию, принимает подсчёты работников, видит расхождения, печатает отчёт и заполняет бланк. <b>Работник</b> входит по коду и только считает свою зону. Роль определяется автоматически (создал сессию → руководитель, вошёл по коду → работник); при необходимости её можно сменить ссылкой вверху.</p>
-
       <h3>Изоляция данных</h3>
       <p>Все данные на сервере привязаны к <b>коду сессии</b>. Подсчёты разных заведений не пересекаются — даже если совпали склад и дата. Без активной сессии выгрузка на сервер недоступна (подсчёт при этом продолжает работать локально).</p>
 
       <h3>Сохранение данных</h3>
-      <p><b>Офлайн.</b> Весь подсчёт хранится локально в памяти браузера. <b>Онлайн.</b> Связь нужна только для сессии: создать, войти, выгрузить и принять подсчёты.</p>
+      <p><b>Офлайн.</b> Весь подсчёт хранится локально в памяти браузера, есть история сохранённых подсчётов на «Главной». <b>Онлайн.</b> Связь нужна только для сессии: создать, войти, выгрузить и принять подсчёты.</p>
 
-      <h3>Подготовка (руководитель)</h3>
+      <h3>Начало (инициатор)</h3>
       <ul>
-        <li>Выберите склад (Бар/Кухня/Посуда/Карты/Форма/Имущество) — по нему подтянется список товаров.</li>
+        <li>На «Главной» выберите склад (Бар/Кухня/Посуда/Карты/Форма/Имущество) — по нему подтянется список товаров.</li>
         <li>При необходимости обновите список: кнопка «Структура товаров (бланк)», файл только <b>.xlsx</b> (если .xls — пересохраните в Excel через «Сохранить как»).</li>
-        <li>Нажмите «Создать сессию» — появится код. Передайте его работникам (список товаров уйдёт им автоматически).</li>
+        <li>Нажмите «Создать сессию» — появится код. Передайте его тем, кто считает (список товаров уйдёт им автоматически).</li>
       </ul>
 
-      <h3>Работа (работник)</h3>
+      <h3>Подсчёт (все участники)</h3>
       <ul>
-        <li>Введите код от руководителя → «Войти в сессию». Склад и список товаров подставятся сами, откроется вкладка «Товары».</li>
+        <li>Введите код → «Войти в сессию». Склад и список товаров подставятся сами, откроется вкладка «Товары».</li>
         <li>Посчитайте свою зону на вкладках «Товары» и «ПФ».</li>
-        <li>Нажмите «Выгрузить мой подсчёт» — данные уйдут руководителю, поля очистятся.</li>
-        <li>«Загрузить последний выгруз» вернёт в поля вашу последнюю отправку (если нужно проверить или дослать).</li>
+        <li>Нажмите «Выгрузить мой подсчёт» — данные уйдут инициатору, поля очистятся.</li>
       </ul>
 
-      <h3>Сведение (руководитель)</h3>
+      <h3>Сведение</h3>
       <ul>
         <li>Когда все выгрузили — «Принять результаты с сервера»: подсчёты суммируются и сервер очищается.</li>
         <li>Проверьте «Расхождения (факт − расчёт)»: минус — красным (нехватка), плюс — зелёным (излишек).</li>
@@ -551,12 +543,12 @@
       </ul>
 
       <h3>Индивидуальная инвентаризация</h3>
-      <p>Один человек — оставайтесь в роли «Руководитель», сессия не нужна: выберите склад, посчитайте, «Заполнить и скачать».</p>
+      <p>Один человек — сессия не нужна: выберите склад, посчитайте, «Заполнить и скачать».</p>
 
       <p><b>Важно про сверку.</b> Для расхождений нужен свежий отчёт «остатки на складах». Финальную сверку делайте перед отправкой, когда товаровед провёл все приходы, перемещения и списания.</p>
 
       <h3>Кнопки очистки</h3>
-      <p><b>«Очистить только товары»</b> (вкладка Товары) и <b>«Очистить только ПФ»</b> (вкладка ПФ) сбрасывают свою вкладку. <b>«Очистить весь подсчёт»</b> (Управление) сбрасывает и товары, и ПФ. Все — с подтверждением в два нажатия.</p>
+      <p><b>«Очистить только товары»</b> (вкладка Товары) и <b>«Очистить только ПФ»</b> (вкладка ПФ) сбрасывают свою вкладку. <b>«Очистить весь подсчёт»</b> («Главная») сбрасывает и товары, и ПФ. Все — с подтверждением в два нажатия.</p>
     </div>
   </section>
 
@@ -945,20 +937,9 @@ function sbSessionGuard(){
   return { mismatch:false, message:"" };
 }
 
-/* Роли: admin (создал сессию / работает один) | worker (вошёл по коду) */
-const ROLE_LS = "pfcalc_role";
-let appRole = "admin";
-function loadRole(){ try{ const r = localStorage.getItem(ROLE_LS); appRole = (r === "worker") ? "worker" : "admin"; }catch(e){ appRole = "admin"; } }
-function setRole(r){ appRole = (r === "worker") ? "worker" : "admin"; try{ localStorage.setItem(ROLE_LS, appRole); }catch(e){} applyRole(); }
-
-/* снимок последней успешной выгрузки — для кнопки «Загрузить последний выгруз» */
-const LAST_UPLOAD_LS = "pfcalc_last_upload";
-function saveLastUpload(kind, snap){
-  try{ localStorage.setItem(LAST_UPLOAD_LS, JSON.stringify({ kind:kind, snap:snap, at:new Date().toISOString() })); }catch(e){}
-}
-function getLastUpload(){
-  try{ const d = JSON.parse(localStorage.getItem(LAST_UPLOAD_LS) || "null"); return (d && d.snap) ? d : null; }catch(e){ return null; }
-}
+/* Единый интерфейс без ролей — заглушки для обратной совместимости вызовов */
+function loadRole(){}
+function setRole(){}
 
 const PF_PREFIX = "@pf@||";
 function buildNameKey(){
@@ -1104,7 +1085,6 @@ async function sbCreateSession(){
   catch(e){ error = e; }
   if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Не удалось создать сессию — проверь сеть"); return; }
   sbSetSession(code, wk, date);
-  setRole("admin");
   sbSetStatus("Сессия " + code, true);
   toast("Сессия " + code + " создана — сообщи код работникам");
 }
@@ -1121,7 +1101,6 @@ async function sbJoinSession(){
   if(!data || !data.warehouse){ sbSetStatus("Сессия не найдена", false); toast("Сессия " + code + " не найдена"); return; }
   sbApplySession(data);
   sbSetSession(code, data.warehouse, data.report_date);
-  setRole("worker");
   switchTab("count");
   sbSetStatus("Вошёл в сессию " + code, true);
   toast("Сессия " + code + " — склад и список товаров подставлены");
@@ -1141,7 +1120,7 @@ async function saveAndUploadFact(){
   sbSetBusy(true);
   try{
     const ok = await sbUpload(snap);
-    if(ok){ saveLastUpload("fact", invState.fact); clearFact(snap); }
+    if(ok) clearFact(snap);
   } finally { sbSetBusy(false); }
 }
 async function saveAndUploadPf(){
@@ -1151,29 +1130,8 @@ async function saveAndUploadPf(){
   sbSetBusy(true);
   try{
     const ok = await sbUpload(snap);
-    if(ok){ saveLastUpload("pf", getInputs()); resetAll(snap); }
+    if(ok) resetAll(snap);
   } finally { sbSetBusy(false); }
-}
-
-/* «Загрузить последний выгруз» — вернуть в поля снимок последней успешной выгрузки */
-function loadLastUpload(){
-  const d = getLastUpload();
-  if(!d || !d.snap || !Object.keys(d.snap).length){ toast("Нет сохранённой выгрузки"); return; }
-  if(d.kind === "fact"){
-    invState.fact = Object.assign({}, invState.fact, d.snap);
-    invSaveState();
-    document.querySelectorAll("input.factinp").forEach(inp=>{
-      const v = invState.fact[inp.dataset.key];
-      if(v !== undefined && v !== null && v !== "") inp.value = String(v);
-    });
-    for(const k in diffCells) updateDiffByKey(k);
-    renderInvGroups(); updateInvStats(); renderInvDiff();
-    toast("Последняя выгрузка возвращена в товары");
-  } else if(d.kind === "pf"){
-    ALL_PF.forEach((r,i)=>{ const cn = r.n; if(d.snap[cn] !== undefined) setQ(i, d.snap[cn]); });
-    recompute(); persistPfInputs();
-    toast("Последняя выгрузка возвращена в ПФ");
-  }
 }
 
 async function sbUpload(snap){
@@ -1681,23 +1639,8 @@ function invClearAll(e){
   }, "Точно очистить ВЕСЬ подсчёт?");
 }
 
-/* Волна 3: применение роли — скрыть/показать админ-элементы, поправить вкладки */
-function applyRole(){
-  const isWorker = (appRole === "worker");
-  document.querySelectorAll("[data-adminonly]").forEach(el=>{
-    el.classList.toggle("role-hidden", isWorker);
-  });
-  const badge = document.getElementById("roleBadge");
-  if(badge) badge.textContent = isWorker ? "Работник" : "Руководитель";
-  const sw = document.getElementById("btnRoleSwitch");
-  if(sw) sw.textContent = isWorker ? "я руководитель" : "я работник";
-  // работник на админ-вкладке → перекинуть на Товары
-  if(isWorker){
-    const active = document.querySelector(".tab-btn.active");
-    if(active && active.dataset.tab === "inv") switchTab("count");
-  }
-  updateSessBadge();
-}
+/* Единый интерфейс без ролей: показываем бейдж активной сессии */
+function applyRole(){ updateSessBadge(); }
 function updateSessBadge(){
   const el = document.getElementById("sessBadge");
   if(!el) return;
@@ -2132,7 +2075,6 @@ function showHistDetail(d){
 }
 
 function switchTab(tab){
-  if(appRole === "worker" && tab === "inv") tab = "count";  // работнику Управление недоступно
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.classList.toggle("active", b.dataset.tab === tab);
   });
@@ -2262,9 +2204,6 @@ function initInv(){
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
   document.getElementById("btnSessionJoin").addEventListener("click", sbJoinSession);
   document.getElementById("btnInvSave2").addEventListener("click", saveAndUploadFact);
-  document.getElementById("btnLoadLast").addEventListener("click", loadLastUpload);
-  document.getElementById("btnLoadLastPf").addEventListener("click", loadLastUpload);
-  document.getElementById("btnRoleSwitch").addEventListener("click", ()=>{ setRole(appRole === "admin" ? "worker" : "admin"); });
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
 document.getElementById("btnInvClearFact").addEventListener("click", invClearAll);
 document.getElementById("btnCountClearFact").addEventListener("click", invClearFact);
