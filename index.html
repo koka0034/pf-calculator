@@ -63,6 +63,15 @@
   .tab-btn.active .tab-c{color:var(--color-amber);opacity:1}
   .tab-btn.small{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;border-radius:12px;flex:0 0 auto;border-color:var(--line)}
   .tab-btn.small .tab-t{font-size:13px;font-weight:700}
+  /* Волна 3: панель роли + элементы только для админа */
+  .role-hidden{display:none !important}
+  .rolebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .role-badge{font-size:12px;font-weight:700;color:var(--on-amber);background:var(--color-amber);
+    padding:3px 10px;border-radius:999px;letter-spacing:.02em}
+  .sess-badge{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .role-switch{font-size:12px;color:var(--color-amber-2);background:none;border:none;
+    text-decoration:underline;cursor:pointer;padding:4px 2px}
+  .wh-label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
   .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
   .instr p:last-child{margin-bottom:0}
   .instr h3{margin:16px 0 6px;font-size:15px;font-weight:700;color:var(--txt)}
@@ -372,10 +381,14 @@
   </header>
 
   <nav class="tabs" id="navTabs">
-    <button class="tab-btn active" data-tab="inv"><span class="tab-t">Главная</span><span class="tab-c" id="tabcInv">склад · дата</span></button>
+    <button class="tab-btn active" data-tab="inv"><span class="tab-t">Главная</span><span class="tab-c" id="tabcInv">сессия</span></button>
     <button class="tab-btn" data-tab="count"><span class="tab-t">Товары</span><span class="tab-c" id="tabcCount">0 / 0</span></button>
     <button class="tab-btn" data-tab="pf"><span class="tab-t">ПФ</span><span class="tab-c" id="tabcPf">0 / 0</span></button>
   </nav>
+
+  <div class="rolebar" id="roleBar">
+    <span class="sess-badge" id="sessBadge"></span>
+  </div>
 
   <section id="tab-inv" class="pane">
     <div class="stats">
@@ -389,27 +402,17 @@
     </div>
 
     <div class="inv-top">
-      <label for="invRestaurant">Ресторан</label>
-      <select id="invRestaurant"></select>
-      <div class="row2">
-        <div class="row2-col">
-          <label for="invRest">Склад</label>
-          <select id="invRest"></select>
-        </div>
-        <div class="row2-col">
-          <label for="invDate">Дата</label>
-          <input type="date" id="invDate">
-        </div>
-      </div>
       <div class="sessbox">
         <div class="sess-title">Сессия синхронизации</div>
         <div class="sess-info" id="sessInfo">нет активной сессии</div>
+        <label for="invRest" class="wh-label">Склад инвентаризации</label>
+        <select id="invRest"></select>
         <div class="bar">
           <button id="btnSessionCreate" class="primary">Создать сессию</button>
           <input type="text" id="sessionCode" class="sesscode" placeholder="Код сессии" maxlength="8" autocomplete="off" spellcheck="false">
           <button id="btnSessionJoin" class="blue">Войти в сессию</button>
         </div>
-        <p class="sub">Начальник: выбери ресторан, склад и дату → «Создать сессию» и передай код работникам. Работник: введи код → «Войти в сессию», ресторан/склад/дата подставятся сами.</p>
+        <p class="sub">Инициатор: выбери склад → «Создать сессию» и передай код тем, кто считает (список товаров передаётся автоматически). Участник: введи код → «Войти в сессию».</p>
       </div>
     </div>
 
@@ -457,8 +460,7 @@
 
 
     <div class="bar">
-      <button id="btnInvReset" class="burgundy">Очистить расчёт данные</button>
-      <button id="btnInvClearFact" class="burgundy">Сбросить введённые данные</button>
+      <button id="btnInvClearFact" class="burgundy">Очистить весь подсчёт</button>
     </div>
   </section>
 
@@ -468,12 +470,13 @@
       <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
     </div>
-    <button id="btnInvSave2" class="uploadbtn">Сохранить - выгрузить - очистить подсчёт</button>
+    <button id="btnInvSave2" class="uploadbtn">Выгрузить мой подсчёт</button>
+    <p class="sub" id="uploadHint">Отправляет подсчёт на сервер (нужна активная сессия) и очищает поля.</p>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <button id="btnCountMode" class="grpadd">Показать сверку (из ПФ / ±)</button>
     <div id="invCountGroups"></div>
-    <button id="btnCountClearFact" class="fwbtn burgundy">Сбросить введённые данные</button>
+    <button id="btnCountClearFact" class="fwbtn burgundy">Очистить только товары</button>
   </section>
 
   <section id="tab-pf" class="pane hidden">
@@ -482,7 +485,7 @@
       <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
       <div class="stat"><b id="stVol">0</b><span>литров ПФ всего</span></div>
     </div>
-    <button id="btnPfUpload" class="uploadbtn">Сохранить - выгрузить - очистить подсчёт</button>
+    <button id="btnPfUpload" class="uploadbtn">Выгрузить мой подсчёт</button>
 
     <h2 class="h2big">Остатки настоек (л)</h2>
     <div id="pfList"></div>
@@ -491,72 +494,61 @@
     <div id="otherPfList"></div>
 
     <div class="bar">
-      <button id="btnReset" class="burgundy">Сбросить</button>
+      <button id="btnReset" class="burgundy">Очистить только ПФ</button>
       <button id="btnPrint" class="blue">Печать отчёта</button>
     </div>
 
-    <h2>Итог по товарам</h2>
-    <div class="panel"><div id="result"></div></div>
+    <div>
+      <h2>Итог по товарам</h2>
+      <div class="panel"><div id="result"></div></div>
 
-    <details>
-      <summary>Раскладка по ПФ</summary>
-      <div class="detail" id="detail"></div>
-    </details>
+      <details>
+        <summary>Раскладка по ПФ</summary>
+        <div class="detail" id="detail"></div>
+      </details>
+    </div>
   </section>
 
 <section id="tab-hist" class="pane hidden">
     <h2>Как пользоваться</h2>
     <div class="panel instr">
       <h3>Назначение</h3>
-      <p>Программа для инвентаризации: бар, кухня, посуда, карты/форма и другое имущество. Работает и в одиночку, и в команде — для командной работы есть режим совместной инвентаризации по коду сессии.</p>
+      <p>Программа для инвентаризации: бар, кухня, посуда, карты/форма и другое имущество. Работает и в одиночку, и в команде — совместная инвентаризация ведётся по коду сессии.</p>
+
+      <h3>Изоляция данных</h3>
+      <p>Все данные на сервере привязаны к <b>коду сессии</b>. Подсчёты разных заведений не пересекаются — даже если совпали склад и дата. Без активной сессии выгрузка на сервер недоступна (подсчёт при этом продолжает работать локально).</p>
 
       <h3>Сохранение данных</h3>
-      <p><b>Офлайн.</b> Все подсчёты и сохранения происходят локально в памяти браузера — данные никуда не передаются и остаются под вашим контролем.</p>
-      <p><b>Онлайн.</b> Интернет нужен только при командной работе: для создания сессии, подключения участников и выгрузки их подсчётов на устройство руководителя.</p>
+      <p><b>Офлайн.</b> Весь подсчёт хранится локально в памяти браузера, есть история сохранённых подсчётов на «Главной». <b>Онлайн.</b> Связь нужна только для сессии: создать, войти, выгрузить и принять подсчёты.</p>
 
-      <h3>Подготовка к инвентаризации (шаг 1)</h3>
-      <p>В программе уже есть базовые списки товаров для разных складов (Бар, Кухня, Посуда, Карты, Форма, Имущество). Если меню изменилось или появились новые позиции — список нужно актуализировать.</p>
+      <h3>Начало (инициатор)</h3>
       <ul>
-        <li>Подготовьте актуальный пустой бланк инвентаризации.</li>
-        <li><b>Важно:</b> программа работает только с файлами <b>.xlsx</b>. Если бланк в другом формате (.xls, .csv) — пересохраните его в .xlsx («Сохранить как» в Excel).</li>
-        <li>Загрузите бланк в программу <b>до</b> создания сессии.</li>
+        <li>На «Главной» выберите склад (Бар/Кухня/Посуда/Карты/Форма/Имущество) — по нему подтянется список товаров.</li>
+        <li>При необходимости обновите список: кнопка «Структура товаров (бланк)», файл только <b>.xlsx</b> (если .xls — пересохраните в Excel через «Сохранить как»).</li>
+        <li>Нажмите «Создать сессию» — появится код. Передайте его тем, кто считает (список товаров уйдёт им автоматически).</li>
       </ul>
 
-      <h3>Совместная инвентаризация (шаг 2)</h3>
-      <p><b>Руководитель (инициатор):</b></p>
+      <h3>Подсчёт (все участники)</h3>
       <ul>
-        <li>Загрузите подготовленный пустой бланк (.xlsx) кнопкой «Структура товаров (бланк)».</li>
-        <li>Нажмите «Создать сессию» — программа сгенерирует уникальный код. Продиктуйте или перешлите его сотрудникам.</li>
-        <li>Список товаров с вашего устройства автоматически передаётся участникам — все считают одинаковый перечень.</li>
-        <li>Участники подключаются по коду, считают и выгружают данные прямо на ваше устройство.</li>
-        <li>Когда все закончили — нажмите «Принять результаты с сервера» и сверьте факт с расчётом.</li>
-        <li>Нажмите «Заполнить и скачать» — программа сама впишет посчитанные остатки в пустой бланк.</li>
-        <li>Отправьте заполненный бланк товароведу на проверку.</li>
+        <li>Введите код → «Войти в сессию». Склад и список товаров подставятся сами, откроется вкладка «Товары».</li>
+        <li>Посчитайте свою зону на вкладках «Товары» и «ПФ».</li>
+        <li>Нажмите «Выгрузить мой подсчёт» — данные уйдут инициатору, поля очистятся.</li>
       </ul>
-      <p><b>Участник (сотрудник):</b></p>
+
+      <h3>Сведение</h3>
       <ul>
-        <li>Введите код сессии, полученный от руководителя, и нажмите «Войти в сессию».</li>
-        <li>Склад, дата и список товаров подставятся автоматически.</li>
-        <li>Проведите подсчёт по своей зоне и нажмите «Сохранить - выгрузить - очистить подсчёт».</li>
+        <li>Когда все выгрузили — «Принять результаты с сервера»: подсчёты суммируются и сервер очищается.</li>
+        <li>Проверьте «Расхождения (факт − расчёт)»: минус — красным (нехватка), плюс — зелёным (излишек).</li>
+        <li>«Заполнить и скачать» впишет остатки в шаблон бланка (файл сохранится как <b>имя-шаблона_заполненный.xlsx</b>).</li>
       </ul>
 
       <h3>Индивидуальная инвентаризация</h3>
-      <p>Если работаете один (1 человек — 1 устройство), код сессии не нужен: загрузите актуальный бланк (.xlsx), проведите подсчёт — программа заполнит бланк по итогам.</p>
+      <p>Один человек — сессия не нужна: выберите склад, посчитайте, «Заполнить и скачать».</p>
 
-      <p><b>Важно про сверку.</b> Для сверки и выявления расхождений нужен самый последний, актуальный отчёт — «остатки на складах». Финальную сверку-проверку проводи непосредственно перед отправкой, предварительно убедившись, что товаровед уже сделал все приходы, перемещения и списания.</p>
+      <p><b>Важно про сверку.</b> Для расхождений нужен свежий отчёт «остатки на складах». Финальную сверку делайте перед отправкой, когда товаровед провёл все приходы, перемещения и списания.</p>
 
-      <h3>Пошагово по кнопкам</h3>
-      <p><b>1. Настройка.</b> На «Главной» выбери ресторан, склад (Бар/Кухня/Посуда/Карты/Форма/Имущество) и дату инвентаризации.</p>
-      <p><b>2. Импорт бланка.</b> Кнопка «Структура товаров (бланк)» загружает структуру товаров по группам для подсчёта.</p>
-      <p><b>3. Импорт отчёта.</b> Кнопка «Остатки из отчёта» подгружает расчётные остатки из крайнего правого столбца файла.</p>
-      <p><b>4. Подсчёт.</b> Вводи фактические остатки по группам. Кнопка «Свернуть все группы» сворачивает/разворачивает категории.</p>
-      <p><b>5. ПФ.</b> На вкладке «ПФ» введи остатки настоек (л) и других ПФ — внизу появится «Итог по товарам».</p>
-      <p><b>6. Разборка ПФ.</b> Остатки ПФ автоматически раскладываются в товары и появляются во вкладке «Товары» в столбце «из ПФ» (кнопка «Показать сверку»).</p>
-      <p><b>7. Расхождения.</b> Блок «Расхождения (факт − расчёт)» считается автоматически: минус — красным, плюс — зелёным. «Печать расхождений» формирует печатный отчёт.</p>
-      <p><b>8. Выгрузка.</b> На вкладках «Товары» и «ПФ» кнопка «Сохранить - выгрузить - очистить подсчёт» сохраняет подсчёт локально, отправляет его на сервер и после успешной выгрузки сбрасывает введённые данные своей вкладки.</p>
-      <p><b>9. Приём.</b> На «Главной» кнопка «Принять результаты с сервера» забирает выгруженные данные, суммирует их с текущими и очищает сервер.</p>
-      <p><b>10. Заполнение бланка.</b> На «Главной» выбери шаблон бланка (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие», форматирование сохранится.</p>
-      <p><b>11. Сброс.</b> Кнопки «Очистить расчёт данные» и «Сбросить введённые данные» очищают данные подсчёта.</p>
+      <h3>Кнопки очистки</h3>
+      <p><b>«Очистить только товары»</b> (вкладка Товары) и <b>«Очистить только ПФ»</b> (вкладка ПФ) сбрасывают свою вкладку. <b>«Очистить весь подсчёт»</b> («Главная») сбрасывает и товары, и ПФ. Все — с подтверждением в два нажатия.</p>
     </div>
   </section>
 
@@ -931,19 +923,23 @@ function sbClient(){
   catch(e){ sbSetStatus("Ошибка инициализации", false); toast("Ошибка инициализации синхронизации"); return null; }
   return sb;
 }
-function sbReportDate(){ return (document.getElementById("invDate").value || "").trim(); }
-function sbWarehouseKey(){ return (invRestaurant || "") + "::" + (invRest || ""); }
+/* Волна 3: ключ синхронизации = КОД СЕССИИ (изоляция ресторанов).
+   Данные на сервере живут под уникальным кодом → пересечься невозможно.
+   Дата как поле убрана: для отчёта/бланка берём сегодняшнюю. */
+function sbReportDate(){ return localToday(); }
+function sbSyncKey(){ const s = sbSessionInfo(); return (s && s.code) ? s.code : ""; }
+function sbWarehouseKey(){ const s = sbSessionInfo(); return (s && s.warehouse) ? s.warehouse : (invRest || ""); }
 function sbSessionGuard(){
   const s = sbSessionInfo();
   if(!s || !s.code){
-    return { mismatch:true, message:"Нет активной сессии — данные уйдут на склад «" + (invRestaurant || "") + " / " + (invRest || "") + "» за " + (sbReportDate() || "…") + "." };
-  }
-  const wk = sbWarehouseKey(), date = sbReportDate();
-  if(wk !== s.warehouse || date !== s.report_date){
-    return { mismatch:true, message:"Сессия " + s.code + " привязана к «" + s.warehouse + "» за " + s.report_date + ", а текущий выбор — «" + wk + "» за " + (date || "…") + "." };
+    return { mismatch:true, message:"Нет активной сессии. Синхронизация с сервером доступна только внутри сессии — создайте сессию или войдите по коду." };
   }
   return { mismatch:false, message:"" };
 }
+
+/* Единый интерфейс без ролей — заглушки для обратной совместимости вызовов */
+function loadRole(){}
+function setRole(){}
 
 const PF_PREFIX = "@pf@||";
 function buildNameKey(){
@@ -1038,6 +1034,7 @@ function renderSessionInfo(){
     el.textContent = "нет активной сессии";
     el.className = "sess-info";
   }
+  if(typeof updateSessBadge === "function") updateSessBadge();
 }
 function copySessionCode(code){
   const done = (ok)=>toast(ok ? "Код сессии скопирован" : "Не удалось скопировать");
@@ -1062,13 +1059,9 @@ function copySessionCode(code){
   copy(code).then(()=>done(true)).catch(()=>done(false));
 }
 function sbApplySession(s){
-  const wk = (s && s.warehouse) || "";
-  const parts = wk.split("::");
-  const restaurant = parts[0] || "";
-  let rest = parts.slice(1).join("::") || "";
+  // Волна 3: warehouse в сессии — это метка склада (напр. «Бар»), без ресторана.
+  let rest = (s && s.warehouse) || "";
   if(!invRestaurants.includes(rest)) rest = invRestaurants[0] || "Бар";
-  if(RESTAURANTS.includes(restaurant)) invRestaurant = restaurant;
-  localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   invRest = rest;
   if(s && Array.isArray(s.dict) && s.dict.length){
     INV_GROUPS = s.dict;
@@ -1077,17 +1070,14 @@ function sbApplySession(s){
     INV_GROUPS = invLoadDict();
   }
   invState = invLoadState(invRest);
-  if(s && s.report_date) invState.date = s.report_date;
   renderRestSelect();
-  renderRestaurantSelect();
-  syncInvSetup();
   renderInvGroups(); updateInvStats(); renderInvDiff();
   invSaveState();
 }
 async function sbCreateSession(){
   const c = sbClient(); if(!c) return;
   const code = genSessionCode();
-  const wk = sbWarehouseKey();
+  const wk = (invRest || "");   // склад-метка для бейджа сессии
   const date = sbReportDate();
   sbSetStatus("Создание сессии…", true);
   let error;
@@ -1111,8 +1101,9 @@ async function sbJoinSession(){
   if(!data || !data.warehouse){ sbSetStatus("Сессия не найдена", false); toast("Сессия " + code + " не найдена"); return; }
   sbApplySession(data);
   sbSetSession(code, data.warehouse, data.report_date);
+  switchTab("count");
   sbSetStatus("Вошёл в сессию " + code, true);
-  toast("Сессия " + code + " — склад и дата подставлены");
+  toast("Сессия " + code + " — склад и список товаров подставлены");
 }
 
 let sbBusy = false;
@@ -1147,12 +1138,12 @@ async function sbUpload(snap){
   const c = sbClient(); if(!c) return false;
   if(!snap || !Object.keys(snap).length){ sbSetStatus("Нет данных для выгрузки", false); toast("Нет данных для выгрузки — введите хотя бы одну позицию"); return false; }
   const guard = sbSessionGuard();
-  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return false;
-  const wk = sbWarehouseKey();
+  if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message); return false; }
+  const key = sbSyncKey();
   const date = sbReportDate();
   sbSetStatus("Выгрузка…", true);
   let error;
-  try{ ({ error } = await c.rpc("upsert_fact", { p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap })); }
+  try{ ({ error } = await c.rpc("upsert_fact", { p_warehouse: key, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap })); }
   catch(e){ error = e; }
   if(error){ sbSetStatus("Ошибка выгрузки: " + (error.message || error), false); toast("Ошибка выгрузки — проверь сеть"); return false; }
   const n = Object.keys(snap).length;
@@ -1181,8 +1172,8 @@ async function doSbAccept(){
   if(sbBusy) return;
   const c = sbClient(); if(!c) return;
   const guard = sbSessionGuard();
-  if(guard.mismatch && !confirm(guard.message + "\n\nПродолжить всё равно?")) return;
-  const wk = sbWarehouseKey();
+  if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message); return; }
+  const wk = sbSyncKey();
   const date = sbReportDate();
   sbSetBusy(true);
   sbSetStatus("Получение…", true);
@@ -1246,7 +1237,9 @@ async function sbClear(e){
 }
 async function doSbClear(){
   const c = sbClient(); if(!c) return;
-  const wk = sbWarehouseKey();
+  const guard = sbSessionGuard();
+  if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message); return; }
+  const wk = sbSyncKey();
   const date = sbReportDate();
   sbSetStatus("Очистка…", true);
   let data, error;
@@ -1632,10 +1625,27 @@ function invReset(e){
 }
 
 function invClearFact(e){
-  twoStep(e.currentTarget, "Сбросить введённые данные", ()=>{
+  twoStep(e.currentTarget, "Очистить только товары", ()=>{
     clearFact();
-    toast("Введённые данные сброшены");
-  });
+    toast("Товары сброшены");
+  }, "Точно очистить товары?");
+}
+
+function invClearAll(e){
+  twoStep(e.currentTarget, "Очистить весь подсчёт", ()=>{
+    clearFact();
+    resetAll();
+    toast("Весь подсчёт очищен (товары и ПФ)");
+  }, "Точно очистить ВЕСЬ подсчёт?");
+}
+
+/* Единый интерфейс без ролей: показываем бейдж активной сессии */
+function applyRole(){ updateSessBadge(); }
+function updateSessBadge(){
+  const el = document.getElementById("sessBadge");
+  if(!el) return;
+  const s = sbSessionInfo();
+  el.textContent = (s && s.code) ? ("Сессия " + s.code + " · " + (s.warehouse || "")) : "";
 }
 
 function clearFact(uploaded){
@@ -2145,9 +2155,8 @@ async function runReport(){
     const unmatched = [];
     toMap.forEach(function(v, k){ if(!usedTov.has(k)) unmatched.push("Товар: " + v.name); });
     pfMap.forEach(function(v, k){ if(!usedPf.has(k)) unmatched.push("ПФ: " + v.name); });
-    const d = String(invState.date || "").replace(/[^0-9-]/g, "");
-    const r = String(invRestaurant || invRest || "").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "");
-    const fname = (r ? r + "-" : "") + (d || "filled") + ".xlsx";
+    const baseName = String(tpl.name || "бланк").replace(/\.(xlsx|xls)$/i, "");
+    const fname = baseName + "_заполненный.xlsx";
     const out = await wb.xlsx.writeBuffer();
     const blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     const a = document.createElement("a");
@@ -2170,32 +2179,23 @@ async function runReport(){
 
 document.getElementById("btnReport").addEventListener("click", runReport);
 
-function syncInvSetup(){
-  document.getElementById("invDate").value = invState.date || localToday();
-}
+function syncInvSetup(){ /* дата как поле убрана — отчёт/бланк берут сегодняшнюю */ }
 
 function initInv(){
   invRestaurants = ["Бар", "Кухня(в разработке)", "Посуда", "Карты", "Форма", "Имущество"];
-  invRest = "Бар";
-  invRestaurant = localStorage.getItem(INV_LS + "_restaurant") || "Адлер";
+  invRest = localStorage.getItem(INV_LS + "_rest") || "Бар";
   renderRestSelect();
-  renderRestaurantSelect();
   INV_GROUPS = invLoadDict();
   invState = invLoadState(invRest);
-  syncInvSetup();
   renderInvGroups();
   updateInvStats();
 
   document.getElementById("invRest").addEventListener("change", ()=>{
     invRest = document.getElementById("invRest").value;
+    localStorage.setItem(INV_LS + "_rest", invRest);
     INV_GROUPS = invLoadDict();
     invState = invLoadState(invRest);
-    syncInvSetup();
     renderInvGroups(); updateInvStats();
-  });
-  document.getElementById("invRestaurant").addEventListener("change", ()=>{
-    invRestaurant = document.getElementById("invRestaurant").value;
-    localStorage.setItem(INV_LS + "_restaurant", invRestaurant);
   });
   document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
   document.getElementById("btnCountMode").addEventListener("click", toggleCountMode);
@@ -2204,19 +2204,17 @@ function initInv(){
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
   document.getElementById("btnSessionJoin").addEventListener("click", sbJoinSession);
   document.getElementById("btnInvSave2").addEventListener("click", saveAndUploadFact);
-  document.getElementById("btnInvReset").addEventListener("click", invReset);
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
-document.getElementById("btnInvClearFact").addEventListener("click", invClearFact);
+document.getElementById("btnInvClearFact").addEventListener("click", invClearAll);
 document.getElementById("btnCountClearFact").addEventListener("click", invClearFact);
   document.getElementById("btnInvImportCalc").addEventListener("click", ()=>{ document.getElementById("calcFile").click(); });
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
-  document.getElementById("invDate").addEventListener("change", (e)=>{ invState.date = e.target.value; invSaveState(); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
-    document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: только расхождения" : "Показать: все";
+    document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: все" : "Показать: только расхождения";
     renderInvDiff();
   });
 }
@@ -2247,6 +2245,8 @@ recompute();
 initInv();
 renderHist();
 renderSessionInfo();
+loadRole();
+applyRole();
 
 /* iOS P0-2: числовая клавиатура iPhone не имеет Enter → механика «Enter→следующее поле»
    там не работает. Показываем плавающую кнопку «Дальше →» при фокусе числового поля.
