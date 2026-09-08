@@ -198,6 +198,30 @@
   td.neg{color:var(--danger)}
   td.pos{color:var(--acc2)}
   .empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
+  /* ── список расхождений: компактная раскладка, чтобы колонка ± влезала на телефоне ── */
+  #invDiffList table{table-layout:fixed;width:100%}
+  #invDiffList th,#invDiffList td{padding:9px 5px;font-size:13px;word-break:break-word;overflow-wrap:anywhere}
+  #invDiffList th{white-space:nowrap}
+  #invDiffList th:first-child,#invDiffList td:first-child{padding-left:2px}
+  #invDiffList col.c-name,#invDiffList th:nth-child(1){width:auto}
+  #invDiffList th:nth-child(2),#invDiffList td:nth-child(2),
+  #invDiffList th:nth-child(3),#invDiffList td:nth-child(3){width:62px;text-align:right;white-space:nowrap}
+  #invDiffList th:nth-child(4),#invDiffList td:nth-child(4){width:42px;padding-right:2px;text-align:center}
+  #invDiffList td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--acc2);white-space:nowrap}
+  #invDiffList td.diffc{text-align:center;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #invDiffList td.diffc.pos{color:var(--color-green)}
+  #invDiffList td.diffc.neg{color:var(--color-red)}
+  #invDiffList td.diffc.zero{color:var(--muted)}
+  /* раскрытый список: высота ~8 строк, дальше вертикальный скролл */
+  #invDiffList{max-height:730px;overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:thin;scrollbar-color:var(--color-amber) transparent}
+  #invDiffList::-webkit-scrollbar{width:6px}
+  #invDiffList::-webkit-scrollbar-track{background:transparent}
+  #invDiffList::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--color-amber) 55%, transparent);border-radius:3px}
+  #invDiffList table{margin:0}
+  #invDiffList thead th,#invDiffList tr:first-child th{position:sticky;top:0;z-index:1;background:var(--card2)}
+  #invDiffList .dg{display:block;font-size:11px;color:var(--muted)}
+  #invDiffList .unit{color:var(--muted);font-size:11px}
   .hist{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .hist:last-child{border-bottom:none}
   .hist .hd{font-weight:600;font-size:14px;min-width:88px}
@@ -2107,7 +2131,7 @@ function initInv(){
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
   document.getElementById("btnSessionJoin").addEventListener("click", sbJoinSession);
-  document.getElementById("btnInvSave2").addEventListener("click", saveAndUploadFact);
+  document.getElementById("btnInvSave2").addEventListener("click", function(e){ twoStep(e.currentTarget, "Выгрузить мой подсчёт", saveAndUploadFact, "Точно выгрузить?"); });
 document.getElementById("btnInvPrintDiff").addEventListener("click", printDiff);
 document.getElementById("btnInvClearFact").addEventListener("click", invClearAll);
 document.getElementById("btnCountClearFact").addEventListener("click", invClearFact);
@@ -2129,7 +2153,7 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click", ()=
 }));
 
 /* ---- инициализация калькулятора ---- */
-document.getElementById("btnPfUpload").addEventListener("click", saveAndUploadPf);
+document.getElementById("btnPfUpload").addEventListener("click", function(e){ twoStep(e.currentTarget, "Выгрузить мой подсчёт", saveAndUploadPf, "Точно выгрузить?"); });
 document.getElementById("btnReset").addEventListener("click", function(e){ twoStep(e.currentTarget, "Сбросить", resetAll); });
 document.getElementById("btnPrint").addEventListener("click", doPrint);
 document.getElementById("btnSave").addEventListener("click", saveRecord);
