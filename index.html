@@ -85,6 +85,9 @@
   .hbtn.red{border-color:var(--color-red);color:var(--color-red)}
   .hbtn.gray{border-color:var(--line);color:var(--txt)}
   .hbtn.danger{border-color:var(--color-red);color:var(--color-red)}
+  .hbtn:active{filter:brightness(1.35);transform:scale(0.985)}
+  .hbtn.green:active{background:var(--color-green);color:var(--on-green);filter:none}
+  .hbtn.red:active,.hbtn.danger:active{background:var(--color-red);color:#fff;filter:none}
   .hwide{flex:1}
   .hrow2{display:flex;gap:8px}
   .hrow2 .hcol{flex:1;min-width:0}
@@ -203,6 +206,7 @@
      border:1px solid color-mix(in srgb, var(--muted) 45%, transparent);
      background:transparent;color:var(--txt);font-size:13px;font-weight:600;cursor:pointer}
   .hist .del{width:40px;padding:0;color:var(--danger);font-size:15px}
+  .hist button:active{background:var(--color-active)}
   /* файл-инпут в раскрытии «Заполнить бланк» — общий дизайн (латунная рамка) */
   .hfold input[type=file]{width:100%;color:var(--txt);font-size:14px}
   .hfold input[type=file]::file-selector-button{height:44px;border-radius:12px;border:1px solid var(--color-amber);
@@ -506,16 +510,6 @@
       </div>
     </div>
 
-    <!-- Сохранённые -->
-    <div class="hblock">
-      <div class="hblock-hd">Сохранённые подсчёты</div>
-      <div class="hcard">
-        <div class="hbtns"><button id="btnSave" class="hbtn">Сохранить локально</button></div>
-        <p class="hhint">Снимок текущего подсчёта в память браузера — можно вернуться позже.</p>
-        <div id="history" style="margin-top:12px"></div>
-      </div>
-    </div>
-
     <!-- Расхождения -->
     <div class="hblock">
       <div class="hblock-hd">Расхождения</div>
@@ -529,6 +523,16 @@
           <summary><span class="hcar">›</span>Показать список</summary>
           <div class="hbody"><div id="invDiffList"></div></div>
         </details>
+      </div>
+    </div>
+
+    <!-- Сохранённые -->
+    <div class="hblock">
+      <div class="hblock-hd">Сохранённые подсчёты</div>
+      <div class="hcard">
+        <div class="hbtns"><button id="btnSave" class="hbtn">Сохранить локально</button></div>
+        <p class="hhint">Снимок текущего подсчёта в память браузера — можно вернуться позже.</p>
+        <div id="history" style="margin-top:12px"></div>
       </div>
     </div>
 
@@ -1243,7 +1247,7 @@ function applyFact(fact){
 function sbAccept(e){
   if(sbBusy) return;
   const btn = e && e.currentTarget;
-  twoStep(btn, "Принять результаты с сервера", ()=>{ doSbAccept(); }, "Принять и очистить сервер?");
+  twoStep(btn, "Принять результаты", ()=>{ doSbAccept(); }, "Принять и очистить?");
 }
 async function doSbAccept(){
   if(sbBusy) return;
@@ -1310,7 +1314,7 @@ async function doSbAccept(){
 }
 
 async function sbClear(e){
-  twoStep(e.currentTarget, "Сбросить данные сервера", ()=>{ doSbClear(); });
+  twoStep(e.currentTarget, "Сбросить", ()=>{ doSbClear(); }, "Точно?");
 }
 async function doSbClear(){
   const c = sbClient(); if(!c) return;
