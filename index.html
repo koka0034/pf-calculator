@@ -72,6 +72,39 @@
   .rolebar:empty{display:none}
   .sess-badge{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
   .wh-label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+  /* ── Волна 5: единая раскладка «Главной» ── */
+  .hblock{margin-top:20px}
+  .hblock-hd{font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.02em;
+    text-transform:uppercase;color:var(--txt);margin:0 0 8px 2px}
+  .hcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .hbtns{display:flex;flex-direction:column;gap:8px}
+  .hbtns.row{flex-direction:row}
+  .hbtn{font-family:inherit;height:46px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;padding:0 14px;width:100%;
+    background:transparent;border:1px solid var(--color-amber);color:var(--color-amber-2)}
+  .hbtn.green{border-color:var(--color-green);color:var(--color-green)}
+  .hbtn.red{border-color:var(--color-red);color:var(--color-red)}
+  .hbtn.gray{border-color:var(--line);color:var(--txt)}
+  .hbtn.danger{border-color:var(--color-red);color:var(--color-red)}
+  .hwide{flex:1}
+  .hrow2{display:flex;gap:8px}
+  .hrow2 .hcol{flex:1;min-width:0}
+  .hrow2 select,.hrow2 input{margin-bottom:0}
+  .hcode{width:100%;height:46px;border-radius:12px;border:1px solid var(--line);
+    background:var(--input);color:var(--txt);text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase}
+  .hcode::placeholder{letter-spacing:1px;text-transform:none;color:var(--muted)}
+  .hhint{color:var(--muted);font-size:12.5px;line-height:1.5;margin-top:10px}
+  .hhint b{color:#c8bba5;font-weight:600}
+  .hfld{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .hfold{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);overflow:hidden}
+  .hfold>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:13.5px;font-weight:600;
+    color:var(--txt);display:flex;align-items:center;gap:8px}
+  .hfold>summary::-webkit-details-marker{display:none}
+  .hfold.center>summary{justify-content:center;font-size:16px;font-family:var(--font-display)}
+  .hfold .hcar{color:var(--color-amber);transition:transform .15s}
+  .hfold[open] .hcar{transform:rotate(90deg)}
+  .hfold .hbody{padding:0 14px 14px;border-top:1px solid var(--line)}
+  .hsel{width:100%;height:46px;border-radius:12px;border:1px solid var(--line);
+    background:var(--input);color:var(--txt);padding:0 12px;font-size:16px}
   .instr p{margin:0 0 10px;font-size:14px;line-height:1.5}
   .instr p:last-child{margin-bottom:0}
   .instr h3{margin:16px 0 6px;font-size:15px;font-weight:700;color:var(--txt)}
@@ -162,13 +195,20 @@
   td.neg{color:var(--danger)}
   td.pos{color:var(--acc2)}
   .empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
-  .hist{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .hist{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .hist:last-child{border-bottom:none}
   .hist .hd{font-weight:600;font-size:14px;min-width:88px}
   .hist .hs{flex:1;font-size:12px;color:var(--muted)}
-  .hist button{height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line);
-     background:var(--card2);color:var(--txt);font-size:13px;cursor:pointer}
-  .hist .del{width:44px;padding:0;color:var(--danger)}
+  .hist button{height:38px;padding:0 10px;border-radius:9px;
+     border:1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+     background:transparent;color:var(--txt);font-size:13px;font-weight:600;cursor:pointer}
+  .hist .del{width:40px;padding:0;color:var(--danger);font-size:15px}
+  /* файл-инпут в раскрытии «Заполнить бланк» — общий дизайн (латунная рамка) */
+  .hfold input[type=file]{width:100%;color:var(--txt);font-size:14px}
+  .hfold input[type=file]::file-selector-button{height:44px;border-radius:12px;border:1px solid var(--color-amber);
+    background:transparent;color:var(--color-amber-2);font-weight:600;cursor:pointer;padding:0 16px;margin-right:10px;font-size:14px;font-family:inherit}
+  .hfold input[type=file]::-webkit-file-upload-button{height:44px;border-radius:12px;border:1px solid var(--color-amber);
+    background:transparent;color:var(--color-amber-2);font-weight:600;cursor:pointer;padding:0 16px;margin-right:10px;font-size:14px;font-family:inherit}
   .histmore{margin-top:4px}
   .histmore summary{cursor:pointer;padding:11px 14px;font-size:13px;font-weight:600;color:var(--muted);list-style:none}
   .histmore summary::-webkit-details-marker{display:none}
@@ -402,66 +442,99 @@
       <div class="progbar"><div class="progfill" id="progFill"></div></div>
     </div>
 
-    <div class="inv-top">
-      <div class="sessbox">
-        <div class="sess-title">Сессия синхронизации</div>
-        <div class="sess-info" id="sessInfo">нет активной сессии</div>
-        <label for="invRest" class="wh-label">Склад инвентаризации</label>
-        <select id="invRest"></select>
-        <div class="bar">
-          <button id="btnSessionCreate" class="primary">Создать сессию</button>
-          <input type="text" id="sessionCode" class="sesscode" placeholder="Код сессии" maxlength="8" autocomplete="off" spellcheck="false">
-          <button id="btnSessionJoin" class="blue">Войти в сессию</button>
+    <!-- Сессия -->
+    <div class="hblock">
+      <div class="hblock-hd">Сессия синхронизации</div>
+      <div class="hcard">
+        <div class="hrow2">
+          <div class="hcol">
+            <label class="hfld" for="invRest">Склад</label>
+            <select id="invRest" class="hsel"></select>
+          </div>
+          <div class="hcol">
+            <label class="hfld">&nbsp;</label>
+            <button id="btnSessionCreate" class="hbtn">Создать сессию</button>
+          </div>
         </div>
-        <p class="sub">Инициатор: выбери склад → «Создать сессию» и передай код тем, кто считает (список товаров передаётся автоматически). Участник: введи код → «Войти в сессию».</p>
+        <div class="sess-info" id="sessInfo" style="margin-top:10px">нет активной сессии</div>
+        <div class="hrow2">
+          <div class="hcol">
+            <input type="text" id="sessionCode" class="hcode" placeholder="Код сессии" maxlength="8" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="hcol">
+            <button id="btnSessionJoin" class="hbtn">Войти</button>
+          </div>
+        </div>
+        <p class="hhint"><b>Инициатор:</b> выбери склад → «Создать сессию», передай код тем, кто считает. <b>Участник:</b> введи код → «Войти».</p>
       </div>
     </div>
 
-    <details class="impwrap" id="impWrap">
-      <summary><span class="caret">›</span><span>Импорт и шаблоны</span></summary>
-      <div class="impbox">
-        <button id="btnBlankImport" class="blankimp">Структура товаров (бланк)</button>
-        <p class="imphint">Загрузи бланк (.xls/.xlsx) — по нему строится список товаров и групп для подсчёта.</p>
-        <button id="btnInvImportCalc" class="blankimp">Остатки из отчёта</button>
-        <p class="imphint">Импорт остатков из отчёта (.xlsx) — данные берутся из крайнего правого столбца.</p>
-        <div class="panel rptbox">
-          <p class="sub">Заполнение бланка: выбери шаблон (.xlsx) и нажми «Заполнить и скачать» — текущие остатки подставятся в колонку «Фактическое наличие».</p>
-          <label for="rptTpl">Шаблон бланка (.xlsx)</label>
-          <input type="file" id="rptTpl" accept=".xlsx">
-          <div class="bar">
-            <button id="btnReport" class="blue">Заполнить и скачать</button>
+    <!-- Импорт и шаблоны -->
+    <div class="hblock">
+      <div class="hblock-hd">Импорт и шаблоны</div>
+      <div class="hcard">
+        <button id="btnBlankImport" class="hbtn">Структура товаров (бланк)</button>
+        <p class="hhint" style="margin-bottom:12px"><b>Структура товаров</b> — загрузи бланк (.xls/.xlsx), по нему строится список товаров и групп для подсчёта.</p>
+        <button id="btnInvImportCalc" class="hbtn">Остатки из отчёта</button>
+        <p class="hhint"><b>Остатки из отчёта</b> — импорт остатков из отчёта (.xlsx), данные берутся из крайнего правого столбца.</p>
+        <details class="hfold center">
+          <summary><span class="hcar">›</span>Заполнить готовый бланк</summary>
+          <div class="hbody">
+            <p class="hhint">Выбери шаблон (.xlsx) — текущие остатки подставятся в колонку «Фактическое наличие». Файл сохранится как <b>имя_заполненный.xlsx</b>.</p>
+            <label for="rptTpl" class="hfld" style="margin-top:12px">Шаблон бланка (.xlsx)</label>
+            <input type="file" id="rptTpl" accept=".xlsx">
+            <div class="hbtns" style="margin-top:12px"><button id="btnReport" class="hbtn">Заполнить и скачать</button></div>
+            <div class="rpt-status" id="rptStatus"></div>
+            <div class="rpt-detail" id="rptDetail"></div>
           </div>
-          <div class="rpt-status" id="rptStatus"></div>
-          <div class="rpt-detail" id="rptDetail"></div>
-        </div>
+        </details>
         <input type="file" id="calcFile" accept=".xlsx,.xls" class="hidden">
         <div class="sub" id="invImportRes"></div>
       </div>
-    </details>
-
-    <h2>Сохранённые подсчёты</h2>
-    <div class="savebar">
-      <button id="btnSave" class="primary">Сохранить локально</button>
-    </div>
-    <div class="panel"><div id="history"></div></div>
-
-    <div class="syncbox">
-      <div class="sync-title">Синхронизация с сервером</div>
-      <button id="btnAccept" class="syncbtn sync-accept">Принять результаты с сервера</button>
-      <button id="btnClearServer" class="syncbtn sync-reset">Сбросить данные сервера</button>
-      <span class="sbstatus" id="sbStatus"></span>
     </div>
 
-    <details class="diffwrap" id="invDiffWrap">
-      <summary><span class="caret">›</span><span>Расхождения (факт − расчёт)</span></summary>
-      <div class="bar"><button id="btnInvFilter">Показать: только расхождения</button><button id="btnInvPrintDiff" class="blue">Печать расхождений</button></div>
-      <div class="panel"><div id="invDiffList"></div></div>
-    </details>
+    <!-- Синхронизация -->
+    <div class="hblock">
+      <div class="hblock-hd">Синхронизация с сервером</div>
+      <div class="hcard">
+        <div class="hbtns row">
+          <button id="btnAccept" class="hbtn green" style="flex:2">Принять результаты</button>
+          <button id="btnClearServer" class="hbtn red" style="flex:1">Сбросить</button>
+        </div>
+        <p class="hhint"><b>Принять</b> — забрать подсчёты участников и суммировать. <b>Сбросить</b> — очистить сервер без приёма.</p>
+        <span class="sbstatus" id="sbStatus"></span>
+      </div>
+    </div>
 
+    <!-- Сохранённые -->
+    <div class="hblock">
+      <div class="hblock-hd">Сохранённые подсчёты</div>
+      <div class="hcard">
+        <div class="hbtns"><button id="btnSave" class="hbtn">Сохранить локально</button></div>
+        <p class="hhint">Снимок текущего подсчёта в память браузера — можно вернуться позже.</p>
+        <div id="history" style="margin-top:12px"></div>
+      </div>
+    </div>
 
+    <!-- Расхождения -->
+    <div class="hblock">
+      <div class="hblock-hd">Расхождения</div>
+      <div class="hcard">
+        <div class="hbtns row">
+          <button id="btnInvFilter" class="hbtn gray hwide">Показать: только расхождения</button>
+          <button id="btnInvPrintDiff" class="hbtn hwide">Печать</button>
+        </div>
+        <p class="hhint">Факт − расчёт: <b style="color:var(--color-red)">−</b> нехватка, <b style="color:var(--color-green)">+</b> излишек.</p>
+        <details class="hfold" id="invDiffWrap">
+          <summary><span class="hcar">›</span>Показать список</summary>
+          <div class="hbody"><div id="invDiffList"></div></div>
+        </details>
+      </div>
+    </div>
 
-    <div class="bar">
-      <button id="btnInvClearFact" class="burgundy">Очистить весь подсчёт</button>
+    <!-- Очистка -->
+    <div class="hblock">
+      <div class="hcard"><div class="hbtns"><button id="btnInvClearFact" class="hbtn danger">Очистить весь подсчёт</button></div></div>
     </div>
   </section>
 
@@ -1012,6 +1085,10 @@ function sbSessionInfo(){
 }
 function sbSetSession(code, wk, date){
   try{ localStorage.setItem(SESSION_LS, JSON.stringify({code:code, warehouse:wk, report_date:date})); }catch(e){}
+  renderSessionInfo();
+}
+function sbClearSession(){
+  try{ localStorage.removeItem(SESSION_LS); }catch(e){}
   renderSessionInfo();
 }
 function renderSessionInfo(){
@@ -1605,7 +1682,8 @@ function invClearAll(e){
   twoStep(e.currentTarget, "Очистить весь подсчёт", ()=>{
     clearFact();
     resetAll();
-    toast("Весь подсчёт очищен (товары и ПФ)");
+    sbClearSession();
+    toast("Весь подсчёт очищен и сессия сброшена");
   }, "Точно очистить ВЕСЬ подсчёт?");
 }
 
