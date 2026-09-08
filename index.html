@@ -919,7 +919,7 @@ function repeatOn(btn, fn){
     sx = e.clientX; sy = e.clientY;
     moved = false; started = false;
     stopAll();
-    pressTimer = setTimeout(()=>{ if(!moved){ started = true; fn(); iv = setInterval(fn, 110); } }, 400);
+    pressTimer = setTimeout(()=>{ if(!moved){ started = true; blurActiveField(); fn(); iv = setInterval(fn, 110); } }, 400);
   });
   // снять фокус с активной ячейки при тапе по степперу (гасим клавиатуру, не даём фокусу «прилипнуть»)
   const blurActiveField = ()=>{
