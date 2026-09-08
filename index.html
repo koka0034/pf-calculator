@@ -921,13 +921,18 @@ function repeatOn(btn, fn){
     stopAll();
     pressTimer = setTimeout(()=>{ if(!moved){ started = true; fn(); iv = setInterval(fn, 110); } }, 400);
   });
+  // снять фокус с активной ячейки при тапе по степперу (гасим клавиатуру, не даём фокусу «прилипнуть»)
+  const blurActiveField = ()=>{
+    const a = document.activeElement;
+    if(a && a.tagName === "INPUT" && (a.classList.contains("factinp") || a.hasAttribute("data-i"))) a.blur();
+  };
   // iOS/legacy: фокус и клавиатуру вызывают touchend→mousedown. Гасим ТОЛЬКО чистый тап
   // (без движения), чтобы свайп по кнопке по-прежнему прокручивал страницу.
   btn.addEventListener("mousedown", (e)=>e.preventDefault());
   btn.addEventListener("pointermove", (e)=>onMove(e.clientX, e.clientY));
   btn.addEventListener("touchmove", (e)=>{ if(e.touches && e.touches[0]) onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
-  btn.addEventListener("touchend", (e)=>{ if(!moved && e.cancelable) e.preventDefault(); }, {passive:false});
-  btn.addEventListener("pointerup", ()=>{ if(!moved && !started) fn(); stopAll(); });
+  btn.addEventListener("touchend", (e)=>{ if(!moved && e.cancelable){ e.preventDefault(); blurActiveField(); } }, {passive:false});
+  btn.addEventListener("pointerup", ()=>{ if(!moved && !started){ blurActiveField(); fn(); } stopAll(); });
   ["pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev, ()=>{ moved = true; stopAll(); }));
   btn.addEventListener("contextmenu", (e)=>e.preventDefault());
 }
