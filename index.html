@@ -1190,15 +1190,21 @@ function sbApplySession(s){
 }
 async function sbCreateSession(){
   const c = sbClient(); if(!c) return;
-  const code = genSessionCode();
-  const wk = (invRest || "");   // склад-метка для бейджа сессии
+  const sessWh = (invRest || "");   // реальный склад-метка для бейджа сессии
   const date = sbReportDate();
   sbSetStatus("Создание сессии…", true);
-  let error;
-  try{ ({ error } = await c.rpc("create_session", { p_code: code, p_warehouse: wk, p_report_date: date, p_device_id: sbDeviceId(), p_dict: INV_GROUPS })); }
-  catch(e){ error = e; }
-  if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Не удалось создать сессию — проверь сеть", "err"); return; }
-  sbSetSession(code, wk, date);
+  // подбираем свободный код: сервер вернёт {error:'code_taken'}, если код занят (защита от коллизий)
+  let code = "", data, error, taken = false;
+  for(let attempt = 0; attempt < 8; attempt++){
+    code = genSessionCode();
+    try{ ({ data, error } = await c.rpc("create_session", { p_code: code, p_warehouse: sessWh, p_report_date: date, p_device_id: sbDeviceId(), p_dict: INV_GROUPS })); }
+    catch(e){ error = e; }
+    if(error){ sbSetStatus("Ошибка: " + (error.message || error), false); toast("Не удалось создать сессию — проверь сеть", "err"); return; }
+    if(data && data.error === "code_taken"){ taken = true; continue; }
+    taken = false; break;
+  }
+  if(taken){ sbSetStatus("Не удалось подобрать код", false); toast("Не удалось создать сессию — попробуй ещё раз", "err"); return; }
+  sbSetSession(code, sessWh, date);
   sbSetStatus("Сессия " + code, true);
   toast("Сессия " + code + " создана — сообщи код работникам");
 }
@@ -1253,11 +1259,11 @@ async function sbUpload(snap){
   if(!snap || !Object.keys(snap).length){ sbSetStatus("Нет данных для выгрузки", false); toast("Нет данных для выгрузки — введите хотя бы одну позицию", "err"); return false; }
   const guard = sbSessionGuard();
   if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message, "err"); return false; }
-  const key = sbSyncKey();
-  const date = sbReportDate();
+  // p_warehouse здесь = КОД СЕССИИ (историческое имя колонки на сервере). Ключ без даты.
+  const sessCode = sbSyncKey();
   sbSetStatus("Выгрузка…", true);
   let error;
-  try{ ({ error } = await c.rpc("upsert_fact", { p_warehouse: key, p_report_date: date, p_device_id: sbDeviceId(), p_fact: snap })); }
+  try{ ({ error } = await c.rpc("accumulate_fact", { p_warehouse: sessCode, p_device_id: sbDeviceId(), p_fact: snap })); }
   catch(e){ error = e; }
   if(error){ sbSetStatus("Ошибка выгрузки: " + (error.message || error), false); toast("Ошибка выгрузки — проверь сеть", "err"); return false; }
   const n = Object.keys(snap).length;
@@ -1287,12 +1293,12 @@ async function doSbAccept(){
   const c = sbClient(); if(!c) return;
   const guard = sbSessionGuard();
   if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message, "err"); return; }
-  const wk = sbSyncKey();
+  const sessCode = sbSyncKey();
   const date = sbReportDate();
   sbSetBusy(true);
   sbSetStatus("Получение…", true);
   let data, error;
-  try{ ({ data, error } = await c.rpc("drain_fact", { p_warehouse: wk, p_report_date: date })); }
+  try{ ({ data, error } = await c.rpc("drain_fact", { p_warehouse: sessCode })); }
   catch(e){ error = e; }
   finally { sbSetBusy(false); }
   if(error){ sbSetStatus("Ошибка приёма: " + (error.message || error), false); toast("Ошибка приёма — проверь сеть", "err"); return; }
@@ -1334,7 +1340,7 @@ async function doSbAccept(){
   const total = Object.keys(res).length;
   if(unmatched.length){
     try{
-      const rec = { at: new Date().toISOString(), warehouse: wk, date: date, items: unmatched };
+      const rec = { at: new Date().toISOString(), warehouse: sessCode, date: date, items: unmatched };
       const prev = JSON.parse(localStorage.getItem("sb_unmatched") || "[]");
       prev.push(rec);
       localStorage.setItem("sb_unmatched", JSON.stringify(prev.slice(-50)));
@@ -1353,11 +1359,10 @@ async function doSbClear(){
   const c = sbClient(); if(!c) return;
   const guard = sbSessionGuard();
   if(guard.mismatch){ sbSetStatus("Нет активной сессии", false); toast(guard.message, "err"); return; }
-  const wk = sbSyncKey();
-  const date = sbReportDate();
+  const sessCode = sbSyncKey();
   sbSetStatus("Очистка…", true);
   let data, error;
-  try{ ({ data, error } = await c.rpc("clear_fact", { p_warehouse: wk, p_report_date: date })); }
+  try{ ({ data, error } = await c.rpc("clear_fact", { p_warehouse: sessCode })); }
   catch(e){ error = e; }
   if(error){ sbSetStatus("Ошибка очистки: " + (error.message || error), false); toast("Ошибка очистки — проверь сеть", "err"); return; }
   const n = (typeof data === "number") ? data : 0;
