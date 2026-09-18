@@ -334,6 +334,7 @@
        background:var(--card2);color:var(--txt);font-weight:600;cursor:pointer}
   #invImportBox button.primary{background:var(--acc);color:var(--on-amber);border-color:var(--acc)}
   #invImportRes{font-size:12px;color:var(--acc2);margin-top:8px}
+  #impColSel{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--input);color:var(--txt);padding:0 12px;font-family:inherit;font-size:16px;cursor:pointer}
   .dg{display:block;font-size:11px;color:var(--muted)}
   .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--acc2);
        color:var(--on-green);padding:10px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;
@@ -504,7 +505,11 @@
         <button id="btnBlankImport" class="hbtn">Структура товаров (бланк)</button>
         <p class="hhint" style="margin-bottom:12px"><b>Структура товаров</b> — загрузи бланк (.xls/.xlsx), по нему строится список товаров и групп для подсчёта.</p>
         <button id="btnInvImportCalc" class="hbtn">Остатки из отчёта</button>
-        <p class="hhint"><b>Остатки из отчёта</b> — импорт остатков из отчёта (.xlsx), данные берутся из крайнего правого столбца.</p>
+        <p class="hhint"><b>Остатки из отчёта</b> — импорт остатков из отчёта (.xlsx). Столбец с остатками подбирается под текущий склад, при необходимости смени его в списке.</p>
+        <div id="impColWrap" style="display:none">
+          <label for="impColSel" class="hfld" style="margin-top:12px">Столбец остатков из отчёта</label>
+          <select id="impColSel"></select>
+        </div>
         <details class="hfold center">
           <summary><span class="hcar">›</span>Заполнить готовый бланк</summary>
           <div class="hbody">
@@ -1809,7 +1814,20 @@ function printDiff(){
   window.print();
 }
 
-function applyRows(rows, target){
+function impValue(pr, colIdx){
+  if(!pr) return NaN;
+  if(colIdx !== null && colIdx !== undefined && pr.vals){
+    return (pr.vals[colIdx] !== undefined) ? pr.vals[colIdx] : 0;   // в выбранном столбце пусто → 0
+  }
+  if(pr.qty !== undefined && !isNaN(pr.qty)) return pr.qty;
+  if(pr.vals){
+    const ks = Object.keys(pr.vals).map(Number).sort((a,b)=>b-a);
+    if(ks.length) return pr.vals[ks[0]];
+  }
+  return NaN;
+}
+
+function applyRows(rows, target, colIdx){
   const map = {};
   INV_GROUPS.forEach(g=>{ g.goods.forEach(gd=>{ const c = canon(gd.n); if(!(c in map)) map[c] = goodKey(g.g, gd.n); }); });
   let written = 0, existing = 0, skipped = 0;
@@ -1817,7 +1835,9 @@ function applyRows(rows, target){
     if(!pr) return;
     const key = map[canon(pr.name)];
     if(key === undefined){ skipped++; return; }
-    if(target === "calc") invState.calc[key] = pr.qty; else invState.fact[key] = pr.qty;
+    const q = impValue(pr, colIdx);
+    if(isNaN(q)){ skipped++; return; }
+    if(target === "calc") invState.calc[key] = q; else invState.fact[key] = q;
     written++;
     existing++;
   });
@@ -1874,9 +1894,82 @@ function guessColumns(aoa){
       if(!s) continue;
       if(isNaN(toNum(s))) text++; else num++;
     }
-    if(num > 0 && num >= text){ qtyCol = ci; break; }
+    if(num > 0 && num >= text) qtyCol = ci;
   }
   return {nameCol:nameCol, qtyCol:qtyCol};
+}
+
+function looksLikeGroupRow(s){ return /^\s*группа\s*:?/i.test(String(s==null?"":s).trim()); }
+
+// Столбец с названиями товаров ищем по данным, а не по заголовку:
+// в выгрузках «Остатки на складах» заголовок «Название товара» стоит в объединённой
+// ячейке (столбец A), а сами названия лежат правее — в столбце B (в A — «Группа: …»).
+function pickNameCol(aoa, headerRow, hint){
+  const probe = aoa.slice(headerRow+1, headerRow+121).filter(r=>r && r.length);
+  const colCount = Math.max(0, ...probe.map(r=>r.length));
+  const from = Math.max(0, hint-2), to = Math.min(colCount-1, hint+2);
+  let best = hint, bestScore = -1, bestDistinct = -1;
+  for(let ci=from; ci<=to; ci++){
+    let score = 0;
+    const seen = {};
+    probe.forEach(r=>{
+      const s = String(r[ci]==null?"":r[ci]).trim();
+      if(!s) return;
+      if(!isNaN(toNum(s))) return;
+      if(looksLikeGroupRow(s) || /^итого$/i.test(s) || /^артикул$/i.test(s)) return;
+      score++; seen[s] = 1;
+    });
+    const distinct = Object.keys(seen).length;
+    if(score > bestScore || (score === bestScore && distinct > bestDistinct)){
+      bestScore = score; bestDistinct = distinct; best = ci;
+    }
+  }
+  return best;
+}
+
+// Столбцы-кандидаты для импорта: числовые столбцы правее столбца названий.
+function impColumns(aoa, headerRow, nameCol){
+  const hdr = (headerRow >= 0 && aoa[headerRow]) ? aoa[headerRow] : [];
+  const dataRows = aoa.slice(headerRow+1).filter(r=>r && r.some(c=>String(c==null?"":c).trim()!==""));
+  const colCount = Math.max(0, ...dataRows.map(r=>r.length));
+  const out = [];
+  for(let ci=nameCol+1; ci<colCount; ci++){
+    let num = 0, text = 0;
+    dataRows.forEach(r=>{
+      const s = String(r[ci]==null?"":r[ci]).trim();
+      if(!s) return;
+      if(isNaN(toNum(s))) text++; else num++;
+    });
+    if(num >= 3 && num >= text){
+      const lbl = String(hdr[ci]==null?"":hdr[ci]).trim();
+      out.push({i:ci, label:lbl || ("Столбец " + (ci+1))});
+    }
+  }
+  return out;
+}
+
+// Умный выбор столбца: совпадение с названием склада → максимум ненулевых значений
+// по текущему справочнику (без «Итого») → «Итого» → крайний правый.
+function guessImportCol(cols, rows){
+  if(!cols || !cols.length) return null;
+  const dictName = String(invRest||"").replace(/\(.*\)/g,"").trim().toLowerCase();
+  if(dictName){
+    const hit = cols.filter(c=>c.label.toLowerCase().indexOf(dictName) >= 0 && c.label.toLowerCase().indexOf("итого") < 0);
+    if(hit.length) return hit[0].i;
+  }
+  const map = {};
+  INV_GROUPS.forEach(g=>g.goods.forEach(gd=>{ map[canon(gd.n)] = 1; }));
+  let best = null, bestScore = -1;
+  cols.forEach(c=>{
+    if(c.label.toLowerCase().indexOf("итого") >= 0) return;
+    let score = 0;
+    rows.forEach(pr=>{ if(map[canon(pr.name)] && pr.vals && pr.vals[c.i] != null && pr.vals[c.i] !== 0) score++; });
+    if(score > bestScore){ bestScore = score; best = c.i; }
+  });
+  if(best !== null && bestScore > 0) return best;
+  const itogo = cols.filter(c=>c.label.toLowerCase().indexOf("итого") >= 0);
+  if(itogo.length) return itogo[itogo.length-1].i;
+  return cols[cols.length-1].i;
 }
 
 function parseWorkbook(wb){
@@ -1895,14 +1988,16 @@ function parseWorkbook(wb){
   if(!sheetAoa){
     candidates.forEach(c=>{ if(c.nonEmpty > bestNonEmpty){ bestNonEmpty = c.nonEmpty; sheetAoa = c.aoa; } });
   }
-  if(!sheetAoa) return {rows:[], sample:[]};
+  if(!sheetAoa) return {rows:[], sample:[], cols:[]};
 
-  let nameCol, qtyCol, startRow;
+  let nameCol, qtyCol, startRow, headerRow;
   if(header){
-    nameCol = header.nameCol; qtyCol = header.qtyCol; startRow = header.headerRow + 1;
+    headerRow = header.headerRow;
+    nameCol = pickNameCol(sheetAoa, header.headerRow, header.nameCol);
+    qtyCol = header.qtyCol; startRow = header.headerRow + 1;
   }else{
     const g = guessColumns(sheetAoa);
-    nameCol = g.nameCol; qtyCol = g.qtyCol; startRow = 0;
+    headerRow = -1; nameCol = g.nameCol; qtyCol = g.qtyCol; startRow = 0;
   }
 
   const rows = [], sample = [];
@@ -1911,14 +2006,53 @@ function parseWorkbook(wb){
     if(!r.some(c=>String(c||"").trim()!=="")) continue;
     const nm = String(r[nameCol]||"").replace(/@/g," ").replace(/\s+/g," ").trim();
     if(!nm) continue;
-    let qty = NaN;
-    if(qtyCol >= 0) qty = toNum(r[qtyCol]);
-    else { for(let ci=0; ci<r.length; ci++){ const v = toNum(r[ci]); if(!isNaN(v)){ qty=v; break; } } }
+    if(looksLikeGroupRow(nm) || /^итого$/i.test(nm) || /^артикул$/i.test(nm)) continue;
+    const vals = {};
+    for(let ci=0; ci<r.length; ci++){ const v = toNum(r[ci]); if(!isNaN(v)) vals[ci] = v; }
+    const numCols = Object.keys(vals).map(Number).sort((a,b)=>a-b);
+    if(!numCols.length) continue;
+    const qty = (qtyCol >= 0 && vals[qtyCol] !== undefined) ? vals[qtyCol] : vals[numCols[numCols.length-1]];
     if(isNaN(qty)) continue;
-    rows.push({name:nm, qty:qty});
+    rows.push({name:nm, qty:qty, vals:vals});
     if(sample.length < 3) sample.push(nm);
   }
-  return {rows:rows, sample:sample};
+  return {rows:rows, sample:sample, cols:impColumns(sheetAoa, headerRow, nameCol), nameCol:nameCol, headerRow:headerRow};
+}
+
+let lastImport = null;   // {fileName, rows, cols, sample} — последний разобранный отчёт
+
+function impColKey(){ return INV_LS + "_impcol::" + invRest; }
+
+// Столбец запоминаем по названию, а не по номеру: в новых выгрузках порядок столбцов меняется.
+function impColLabel(ci){
+  if(!lastImport) return "";
+  const c = (lastImport.cols || []).filter(x=>x.i === Number(ci))[0];
+  return c ? c.label : "";
+}
+
+function renderImpCol(cols, selected){
+  const wrap = document.getElementById("impColWrap");
+  const sel = document.getElementById("impColSel");
+  if(!wrap || !sel) return;
+  if(!cols || !cols.length){ wrap.style.display = "none"; sel.innerHTML = ""; return; }
+  sel.innerHTML = cols.map(c=>'<option value="'+c.i+'">'+esc(c.label)+'</option>').join("");
+  sel.value = String(selected);
+  wrap.style.display = "";
+}
+
+function runImport(colIdx){
+  const res = document.getElementById("invImportRes");
+  if(!lastImport) return;
+  const ci = (colIdx === null || colIdx === undefined || colIdx === "") ? null : Number(colIdx);
+  const cols = lastImport.cols || [];
+  const lbl = (ci === null) ? "крайний правый столбец" : (((cols.filter(c=>c.i === ci)[0]) || {}).label || ("Столбец " + (ci+1)));
+  const r2 = applyRows(lastImport.rows, "calc", ci);
+  const warn = r2.existing ? "" : " · ни одна позиция не совпала — проверь склад вверху страницы";
+  res.textContent = "Файл «" + lastImport.fileName + "»: столбец «" + lbl + "» · обновлено " + r2.existing
+    + " · пропущено (нет в бланке) " + r2.skipped
+    + (r2.existing ? "" : (lastImport.sample && lastImport.sample.length ? " · пример: " + lastImport.sample.join(" · ") : ""))
+    + warn;
+  if(r2.existing) toast("Импорт: обновлено " + r2.existing + " поз.");
 }
 
 function handleFile(file){
@@ -1934,10 +2068,13 @@ function handleFile(file){
         res.textContent = "Не удалось распознать таблицу. Убедитесь, что в файле есть столбцы «название» и «количество», или пришлите пример отчёта.";
         return;
       }
-      const r2 = applyRows(p.rows, "calc");
-      res.textContent = "Файл «" + file.name + "»: обновлено " + r2.existing + " · пропущено (нет в бланке) " + r2.skipped
-        + (p.sample.length ? " · пример: " + p.sample.join(" · ") : "");
-      toast("Импорт: обновлено " + r2.existing + " поз.");
+      lastImport = {fileName:file.name, rows:p.rows, cols:p.cols || [], sample:p.sample || []};
+      const saved = localStorage.getItem(impColKey());
+      let sel = saved ? lastImport.cols.filter(c=>c.label === saved)[0] : null;
+      if(!sel){ const g = guessImportCol(lastImport.cols, lastImport.rows); sel = lastImport.cols.filter(c=>c.i === g)[0]; }
+      renderImpCol(lastImport.cols, sel ? sel.i : "");
+      if(sel) localStorage.setItem(impColKey(), sel.label);
+      runImport(sel ? sel.i : null);
     }catch(err){
       res.textContent = "Ошибка чтения файла: " + err.message;
     }
@@ -2135,6 +2272,8 @@ function initInv(){
   document.getElementById("invRest").addEventListener("change", ()=>{
     invRest = document.getElementById("invRest").value;
     localStorage.setItem(INV_LS + "_rest", invRest);
+    lastImport = null;
+    const icw = document.getElementById("impColWrap"); if(icw) icw.style.display = "none";
     INV_GROUPS = invLoadDict();
     invState = invLoadState(invRest);
     renderInvGroups(); updateInvStats();
@@ -2153,6 +2292,7 @@ document.getElementById("btnCountClearFact").addEventListener("click", invClearF
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
+  document.getElementById("impColSel").addEventListener("change", (e)=>{ localStorage.setItem(impColKey(), impColLabel(e.target.value)); runImport(e.target.value); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
