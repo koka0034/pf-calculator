@@ -523,9 +523,9 @@
         <details class="hfold center">
           <summary><span class="hcar">›</span>Заполнить готовый бланк</summary>
           <div class="hbody">
-            <p class="hhint">Выбери шаблон (.xlsx) — текущие остатки подставятся в колонку «Фактическое наличие». Файл сохранится как <b>имя_заполненный.xlsx</b>.</p>
-            <label for="rptTpl" class="hfld" style="margin-top:12px">Шаблон бланка (.xlsx)</label>
-            <input type="file" id="rptTpl" accept=".xlsx">
+            <p class="hhint">Выбери шаблон бланка (.xls или .xlsx) — текущие остатки подставятся в колонку «Остаток фактический» / «Фактическое наличие». Колонки ищутся по заголовкам. Файл сохранится как <b>имя_заполненный.xlsx</b>; для .xls объединённые ячейки сохраняются, оформление может упроститься.</p>
+            <label for="rptTpl" class="hfld" style="margin-top:12px">Шаблон бланка (.xls / .xlsx)</label>
+            <input type="file" id="rptTpl" accept=".xls,.xlsx">
             <div class="hbtns" style="margin-top:12px"><button id="btnReport" class="hbtn">Заполнить и скачать</button></div>
             <div class="rpt-status" id="rptStatus"></div>
             <div class="rpt-detail" id="rptDetail"></div>
@@ -2652,12 +2652,49 @@ function nameMap(list){
   }
   return map;
 }
+/* Поиск колонок бланка по заголовкам — вместо жёстких «название в C, факт в E».
+   Новые бланки iiko: колонка B — «Наименование», колонка G — «Остаток фактический». */
+const RPT_NAME_HEAD_RE = /наимен|название/i;
+const RPT_QTY_HEAD_RE = /остаток фактич|фактическ|факт\.? наличие|количество/i;
+function findReportColumns(ws){
+  let headerRow = -1, nameCol = -1, qtyCol = -1;
+  ws.eachRow(function(row, rn){
+    if(headerRow > 0 && rn > headerRow + 5) return;
+    for(let c = 1; c <= Math.max(6, row.cellCount || 0); c++){
+      const v = row.getCell(c).value;
+      const s = String((v && v.richText) ? v.richText.map(function(t){ return t.text; }).join("") : (v === null || v === undefined ? "" : v)).trim();
+      if(!s) continue;
+      if(headerRow < 0 && RPT_NAME_HEAD_RE.test(s)) headerRow = rn;
+      if(headerRow < 0) continue;
+      if(nameCol < 0 && RPT_NAME_HEAD_RE.test(s)) nameCol = c;
+      if(qtyCol < 0 && RPT_QTY_HEAD_RE.test(s)) qtyCol = c;
+    }
+  });
+  // «Ед. изм.» стоит правее колонки названий, но левее фактического остатка — не путаем их
+  if(qtyCol > 0 && nameCol > 0 && qtyCol <= nameCol) qtyCol = -1;
+  return { headerRow:headerRow, nameCol:nameCol, qtyCol:qtyCol };
+}
+function reportCellText(cell){
+  const v = cell ? cell.value : null;
+  if(v === null || v === undefined) return "";
+  if(typeof v === "object" && v.richText) return v.richText.map(function(t){ return t.text; }).join("").trim();
+  if(typeof v === "object" && v.text !== undefined) return String(v.text).trim();
+  if(v instanceof Date) return v.toISOString();
+  return String(v).trim();
+}
+function reportCellNum(cell){
+  const t = reportCellText(cell);
+  if(!t) return NaN;
+  const n = parseFloat(t.replace(",", ".").replace(/\s/g, ""));
+  return isNaN(n) ? NaN : n;
+}
+
 async function runReport(){
   const st = document.getElementById("rptStatus");
   const det = document.getElementById("rptDetail");
   st.textContent = ""; st.className = "rpt-status"; det.textContent = "";
   const tpl = document.getElementById("rptTpl").files[0];
-  if(!tpl){ st.textContent = "Выбери шаблон бланка (.xlsx)."; return; }
+  if(!tpl){ st.textContent = "Выбери шаблон бланка (.xls или .xlsx)."; return; }
   try{
     const goods = buildReportGoods();
     const pf = buildReportPf();
@@ -2665,19 +2702,31 @@ async function runReport(){
     const toMap = nameMap(goods);
     const pfMap = nameMap(pf);
     if(!window.ExcelJS){ st.textContent = "Библиотека ExcelJS не загрузилась."; return; }
+    let buf = await tpl.arrayBuffer();
+    // ExcelJS не читает старый формат .xls (BIFF) — конвертируем его в .xlsx в памяти
+    const isXls = /\.xls$/i.test(tpl.name || "") || (buf.byteLength > 8 && new Uint8Array(buf)[0] === 0xD0 && new Uint8Array(buf)[1] === 0xCF);
+    if(isXls){
+      if(!window.XLSX){ st.textContent = "Библиотека XLSX не загрузилась — .xls не прочитать."; return; }
+      const wbx = XLSX.read(new Uint8Array(buf), { type:"array", cellStyles:true, cellDates:true });
+      buf = XLSX.write(wbx, { bookType:"xlsx", type:"array" });
+    }
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(await tpl.arrayBuffer());
+    await wb.xlsx.load(buf);
     let filled = 0, blankNoVal = 0;
     const usedTov = new Set(), usedPf = new Set();
+    const colsBySheet = {};
     wb.eachSheet(function(ws){
       const sn = String(ws.name || "").toLowerCase();
       const isPf = /блюд|заготов|полуф|пф/.test(sn);
       const map = isPf ? pfMap : toMap;
       const used = isPf ? usedPf : usedTov;
+      const cols = findReportColumns(ws);
+      colsBySheet[ws.name] = cols;
+      if(cols.nameCol < 0 || cols.qtyCol < 0) return;   // лист без шапки бланка — пропускаем
+      const nmCol = cols.nameCol, qtyCol = cols.qtyCol;
       ws.eachRow(function(row){
-        const nmc = row.getCell(3).value;
-        if(nmc === null || nmc === undefined) return;
-        const nm = String(nmc).trim();
+        if(row.number <= cols.headerRow) return;
+        const nm = reportCellText(row.getCell(nmCol));
         if(!nm) return;
         const k = canon(nm);
         if(!k || RPT_HEADERS.has(k)) return;
@@ -2685,7 +2734,8 @@ async function runReport(){
         if(!hit) return;
         const num = toNum(hit.val);
         if(isNaN(num)){ blankNoVal++; return; }
-        row.getCell(5).value = num;
+        const cell = row.getCell(qtyCol);
+        cell.value = num;                                  // пишем в колонку «Остаток фактический»
         used.add(k);
         filled++;
       });
@@ -2702,10 +2752,18 @@ async function runReport(){
     a.download = fname;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
-    st.textContent = "Готово: заполнено " + filled + " позиций";
-    let dt = "";
+    const colInfo = Object.keys(colsBySheet).map(function(nm){
+      const c = colsBySheet[nm];
+      return c.nameCol >= 0 && c.qtyCol >= 0
+        ? (nm + ": название " + XLSX.utils.encode_col(c.nameCol - 1) + ", факт " + XLSX.utils.encode_col(c.qtyCol - 1))
+        : (nm + ": шапка бланка не найдена");
+    });
+    st.textContent = "Готово: заполнено " + filled + " позиций"
+      + (isXls ? " · .xls сконвертирован (объединённые ячейки сохраняются, оформление может упроститься)" : "");
+    st.title = colInfo.join(" · ");
+    let dt = colInfo.join("\n");
     if(unmatched.length){
-      dt += "Не найдено в бланке (" + unmatched.length + "):\n" + unmatched.slice(0,40).join("\n") + (unmatched.length > 40 ? "\n…" : "");
+      dt += "\n\nНе найдено в бланке (" + unmatched.length + "):\n" + unmatched.slice(0,40).join("\n") + (unmatched.length > 40 ? "\n…" : "");
     }
     if(blankNoVal) dt += (dt ? "\n\n" : "") + "Строк бланка без числового значения: " + blankNoVal;
     det.textContent = dt;
