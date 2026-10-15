@@ -1475,6 +1475,22 @@ function focusNextFact(cur){
   } else { cur.blur(); }
 }
 
+/* Переход между полями «Факт» стрелками вверх/вниз: влево/вправо по-прежнему
+   двигают курсор внутри числа, поэтому их не трогаем. */
+function focusAdjacentFact(cur, dir){
+  const pane = cur.closest(".pane") || document;
+  const all = Array.from(pane.querySelectorAll("input.factinp"));
+  const i = all.indexOf(cur);
+  if(i < 0) return false;
+  const nx = all[i + dir];
+  if(!nx) return false;
+  const det = nx.closest("details"); if(det) det.open = true;
+  nx.focus({ preventScroll: true });
+  try{ nx.select(); }catch(e){}
+  nx.scrollIntoView({ block: "center", behavior: "auto" });
+  return true;
+}
+
 
 
 function renderGroupsInto(boxId, showDiff){
@@ -1544,7 +1560,10 @@ function renderGroupsInto(boxId, showDiff){
           syncFactTwins(key, f);
         });
         f.addEventListener("keydown", (e)=>{
-          if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); }
+          if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); return; }
+          // стрелки вверх/вниз — переход между полями «Факт» (влево/вправо двигают курсор в числе)
+          if(e.key === "ArrowDown" || e.keyCode === 40){ e.preventDefault(); focusAdjacentFact(f, 1); return; }
+          if(e.key === "ArrowUp" || e.keyCode === 38){ e.preventDefault(); focusAdjacentFact(f, -1); return; }
         });
         return f;
       };
