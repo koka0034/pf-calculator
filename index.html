@@ -1189,6 +1189,7 @@ function sbApplySession(s){
     INV_GROUPS = invLoadDict();
   }
   invState = invLoadState(invRest);
+  dedupeGoodsDictionary();          // список мог прийти от другого устройства — чистим дубли/«@»
   renderRestSelect();
   renderInvGroups(); updateInvStats(); renderInvDiff();
   invSaveState();
@@ -1680,16 +1681,146 @@ function renderInvDiff(){
   box.innerHTML = h;
 }
 
+function findGoodByName(name){
+  const cn = canon(name);
+  if(!cn) return null;
+  for(let gi=0; gi<INV_GROUPS.length; gi++){
+    const goods = INV_GROUPS[gi].goods || [];
+    for(let ii=0; ii<goods.length; ii++){
+      if(canon(goods[ii].n) === cn) return {gi:gi, ii:ii};
+    }
+  }
+  return null;
+}
 function addGood(gi){
-  const name = (prompt("Название товара:") || "").trim();
+  const name = cleanProductName(prompt("Название товара:") || "");
   if(!name) return;
   let unit = (prompt("Единица измерения (кг / шт / л):", "шт") || "шт").trim();
   if(!unit) unit = "шт";
+  // Один и тот же товар (с учётом маркера «@») не должен попадать в список дважды:
+  // иначе он считается как две позиции, а подсчёт расходится.
+  const dup = findGoodByName(name);
+  if(dup){
+    if(dup.gi === gi && canon(INV_GROUPS[gi].goods[dup.ii].n) === canon(name)){
+      toast("Такой товар уже есть в этой группе", "err");
+      return;
+    }
+    const keep = INV_GROUPS[dup.gi].goods[dup.ii];
+    const moved = moveGoodValues(goodKey(INV_GROUPS[gi].g, name), goodKey(INV_GROUPS[dup.gi].g, keep.n));
+    INV_GROUPS[dup.gi].goods.splice(dup.ii, 1);
+    toast("Товар уже был в группе «" + INV_GROUPS[dup.gi].g + "» — перенесён туда"
+      + (moved ? " вместе с подсчётом" : ""));
+    invPersistDict(); invSaveState(); renderInvGroups(); updateInvStats(); renderInvDiff();
+    return;
+  }
   INV_GROUPS[gi].goods.push({n:name, u:unit});
   invPersistDict();
   renderInvGroups();
   updateInvStats();
   toast("Товар добавлен");
+}
+
+/* Переносит введённые значения со старого ключа товара на новый (при слиянии дублей),
+   суммируя с уже имеющимся — чтобы подсчёт не терялся. */
+function moveGoodValues(fromKey, toKey){
+  if(!fromKey || !toKey || fromKey === toKey) return false;
+  let moved = false;
+  ["fact","calc"].forEach(function(field){
+    if(invState[field] && invState[field][fromKey] !== undefined){
+      const from = toNum(invState[field][fromKey]) || 0;
+      const to = (invState[field][toKey] !== undefined) ? toNum(invState[field][toKey]) : 0;
+      invState[field][toKey] = Math.round(((isNaN(to) ? 0 : to) + from)*1000)/1000;
+      delete invState[field][fromKey];
+      moved = true;
+    }
+  });
+  if(invState.pfAdd && invState.pfAdd[fromKey] !== undefined){
+    const from = toNum(invState.pfAdd[fromKey]) || 0;
+    const to = (invState.pfAdd[toKey] !== undefined) ? toNum(invState.pfAdd[toKey]) : 0;
+    invState.pfAdd[toKey] = Math.round(((isNaN(to) ? 0 : to) + from)*1000)/1000;
+    delete invState.pfAdd[fromKey];
+    moved = true;
+  }
+  return moved;
+}
+
+/* Убирает из справочника товары с одинаковым названием (ключ canon — «@» не влияет),
+   сохраняя первый: подсчёт с дублей переносится на оставленную позицию.
+   Заодно снимает маркер «@» с названий и переносит подсчёт на очищенные ключи. */
+function dedupeGoodsDictionary(){
+  const seen = {};          // ключ названия → ключ оставшейся позиции
+  const pendingMove = [];   // [откуда, куда] — снятие «@», лишних пробелов и слияние дублей
+  const movedFrom = {};     // ключи-источники, данные которых уже перенесены (дважды не считаем)
+  const destKey = {};       // ключ позиции → её ключ как цели переноса
+  let removed = 0, cleaned = 0;
+
+  INV_GROUPS.forEach(function(g){
+    const keptGoods = [];
+    (g.goods || []).forEach(function(gd){
+      const oldKey = goodKey(g.g, gd.n);
+      const clean = cleanProductName(gd.n);
+      if(clean !== gd.n){ gd.n = clean; cleaned++; }
+      const newKey = goodKey(g.g, gd.n);
+      const cn = canon(gd.n);
+      if(!cn){ keptGoods.push(gd); return; }
+      destKey[newKey] = newKey;
+      if(seen[cn] !== undefined){
+        // дубль: подсчёт уходит на оставленную позицию
+        if(!(newKey in movedFrom)){ pendingMove.push([newKey, seen[cn]]); movedFrom[newKey] = true; }
+        if(oldKey !== newKey && !(oldKey in movedFrom)){ pendingMove.push([oldKey, seen[cn]]); movedFrom[oldKey] = true; }
+        removed++;
+        return;
+      }
+      seen[cn] = newKey;
+      if(oldKey !== newKey && !(oldKey in movedFrom)){
+        pendingMove.push([oldKey, newKey]);   // ключ подсчёта переезжает на очищенное название
+        movedFrom[oldKey] = true;
+      }
+      keptGoods.push(gd);
+    });
+    g.goods = keptGoods;
+  });
+
+  /* Итог считаем один раз: старый ключ → конечная цель (цепочка A→B→C), затем сумму
+     значений пишем в цель. Так подсчёт не теряется: у удалённого дубля целью остаётся
+     оставленная позиция, у переименования — очищенное название. */
+  const destOf = function(k){
+    let cur = k, guard = 0;
+    while(pendingMove.length && guard++ < 40){
+      let next = null;
+      for(let i=0;i<pendingMove.length;i++){
+        if(pendingMove[i][0] === cur){ next = pendingMove[i][1]; break; }
+      }
+      if(next === null || next === cur) break;
+      cur = next;
+    }
+    return cur;
+  };
+  const sources = {};
+  Object.keys(movedFrom).forEach(function(k){ (sources[destOf(k)] = sources[destOf(k)] || []).push(k); });
+  ["fact","calc","pfAdd"].forEach(function(field){
+    const bag = invState[field];
+    if(!bag) return;
+    Object.keys(sources).forEach(function(dest){
+      if(destKey[dest] === undefined) return;   // позиции с таким ключом в справочнике нет
+      let sum = (bag[dest] !== undefined) ? (toNum(bag[dest]) || 0) : 0;
+      let had = (bag[dest] !== undefined);
+      sources[dest].forEach(function(from){
+        if(from === dest || bag[from] === undefined) return;
+        sum += (toNum(bag[from]) || 0);
+        delete bag[from];
+        had = true;
+      });
+      if(had) bag[dest] = Math.round(sum*1000)/1000;
+    });
+  });
+
+  if(removed || cleaned){
+    invSaveState();
+    invPersistDict();
+    renderInvGroups(); updateInvStats(); renderInvDiff();
+  }
+  return removed;
 }
 
 function invSave(){
@@ -2084,32 +2215,117 @@ function handleFile(file){
 }
 
 function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
-function parseBlankWorkbook(wb){
-  const ws = wb.Sheets["Товары"];
-  if(!ws) return null;
-  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+
+/* Товар в выгрузках iiko помечается знаком «@» («Вишня без косточки с/м @»).
+   Маркер снимаем сразу при импорте, чтобы он не попадал в интерфейс, отчёты и
+   шаблоны бланка, а поиск товара шёл по чистому названию. */
+function cleanProductName(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
+
+/* Колонки бланка ищем по заголовкам, а не по номерам: новые выгрузки добавили
+   столбцы «Код» и «Штрихкод» перед «Наименование» — жёсткие индексы (0/2/3)
+   начинали читать штрихкоды и единицы измерения вместо названий товаров. */
+function guessBlankCols(aoa){
+  const first = aoa[0] || [];
+  let group = -1, name = -1, unit = -1;
+  for(let r=0; r<Math.min(14, aoa.length); r++){
+    const row = aoa[r] || [];
+    for(let ci=0; ci<row.length; ci++){
+      const h = cleanBlank(row[ci]).toLowerCase();
+      if(!h) continue;
+      if(group < 0 && h.indexOf("группа") === 0) group = ci;
+      const isBarcode = h.indexOf("штрих") >= 0;
+      const isCode = h.indexOf("код") >= 0;
+      const isName = h.indexOf("наимен") === 0 || h.indexOf("название") === 0 || h === "товар";
+      if(isName || ((isCode || isBarcode) && name < 0)){
+        // «Штрихкод» и «Код» приоритетнее: «Наименование» может стоять правее них
+        if(name < 0 || isName || isBarcode){ name = ci; unit = -1; }
+      }
+      if(h.indexOf("ед.") === 0 || h.indexOf("ед ") === 0 || h === "единица" || h.indexOf("единица изм") === 0){
+        if(unit < 0 || ci >= name) unit = ci;
+      }
+    }
+  }
+  if(name < 0){
+    // Заголовков нет — ищем самый «текстовый» столбец: в нём больше всего нечисловых значений
+    const dataRows = aoa.slice(0, 200).filter(r=>r && r.length);
+    const colCount = Math.max(0, ...dataRows.map(r=>r.length));
+    let bestText = -1, bestCode = -1;
+    for(let ci=0; ci<colCount; ci++){
+      let text = 0;
+      dataRows.forEach(r=>{
+        const s = cleanBlank(r[ci]);
+        if(!s) return;
+        if(!isNaN(toNum(s))) return;
+        if(looksLikeGroupRow(s) || /^итого$/i.test(s) || /^артикул$/i.test(s)) return;
+        text++;
+      });
+      if(text > bestText){ bestText = text; bestCode = ci; }
+    }
+    name = bestCode;
+    if(name < 0) name = Math.max(0, (first.length || 1) - 1);
+  }
+  if(unit < 0 || unit <= name){
+    // «Ед. изм.» часто стоит в другой строке шапки, чем «Группа/Наименование»
+    outer:
+    for(let r=0; r<Math.min(14, aoa.length); r++){
+      const row = aoa[r] || [];
+      for(let ci=name+1; ci<row.length; ci++){
+        const h = cleanBlank(row[ci]).toLowerCase();
+        if(h.indexOf("ед.") === 0 || h.indexOf("ед ") === 0 || h === "единица" || h.indexOf("единица изм") === 0){
+          unit = ci; break outer;
+        }
+      }
+    }
+  }
+  if(unit <= name) unit = -1;   // колонка единиц должна быть правее названий
+  return {group:group, name:name, unit:unit};
+}
+function parseBlankSheet(aoa){
+  if(!aoa || !aoa.length) return null;
+  const cols = guessBlankCols(aoa);
+  const nc = cols.name, gc = cols.group, uc = cols.unit;
+  if(nc < 0) return null;
   const groups = [];
   let cur = null;
-  for(let r=8; r<aoa.length; r++){
+  let start = 0;
+  for(let r=0; r<Math.min(14, aoa.length); r++){
     const row = aoa[r] || [];
-    const c0 = String(row[0]||"").trim();
-    const c2 = String(row[2]||"").trim();
-    const c3 = String(row[3]||"").trim();
-    if(!c0 && !c2) continue;
-    if(c0 === "Товар" || c0 === "Группа" || /^\d+\s*из\s*\d+$/.test(c0)) continue;
-    if(c0.indexOf("Инвентаризацию произвел") === 0) continue;
-    if(c0){
-      const gname = cleanBlank(c0).replace(/\s*\(т\)\s*$/i, "").trim();
+    if(cleanBlank(row[0]) === "Группа" || cleanBlank(row[0]) === "Товар"){ start = r + 1; break; }
+  }
+  for(let r=start; r<aoa.length; r++){
+    const row = aoa[r] || [];
+    const gv = gc >= 0 ? cleanBlank(row[gc]) : "";
+    const nv = cleanBlank(row[nc]);
+    const cv = cleanBlank(row[0]);
+    if(cv === "Товар" || cv === "Группа" || /^\d+\s*из\s*\d+$/.test(cv)) continue;
+    if(cv.indexOf("Инвентаризацию произвел") === 0) continue;
+    if(gv && gv !== "Наименование" && gv !== "Ед. изм."){
+      const gname = gv.replace(/\s*\(т\)\s*$/i, "").trim() || "Без группы";
       cur = groups.find(g=>g.g === gname);
       if(!cur){ cur = {g:gname, goods:[]}; groups.push(cur); }
     }
-    if(!c2) continue;
-    const name = cleanBlank(c2);
-    if(!name || name === "Наименование" || name === "Ед. изм.") continue;
-    const unit = cleanBlank(c3) || "шт";
-    if(cur) cur.goods.push({n:name, u:unit});
+    if(!nv || nv === "Наименование" || nv === "Ед. изм." || nv === "Группа") continue;
+    if(looksLikeGroupRow(nv) || /^итого$/i.test(nv) || /^артикул$/i.test(nv)) continue;
+    if(!cur){ cur = {g:"Без группы", goods:[]}; groups.push(cur); }
+    cur.goods.push({n:cleanProductName(nv), u:(uc >= 0 ? cleanBlank(row[uc]) : "") || "шт"});
   }
   return groups.filter(g=>g.goods.length);
+}
+function parseBlankWorkbook(wb){
+  if(!wb || !wb.SheetNames) return null;
+  const order = wb.SheetNames.slice().sort((a,b)=>(a === "Товары" ? -1 : b === "Товары" ? 1 : 0));
+  let best = null, bestCount = 0;
+  order.forEach(sn=>{
+    const ws = wb.Sheets[sn];
+    if(!ws) return;
+    let aoa;
+    try{ aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""}); }catch(e){ return; }
+    const groups = parseBlankSheet(aoa);
+    if(!groups || !groups.length) return;
+    const count = groups.reduce((s,g)=>s+g.goods.length, 0);
+    if(count > bestCount){ bestCount = count; best = groups; }
+  });
+  return best;
 }
 function handleBlankFile(file){
   if(!file) return;
@@ -2131,7 +2347,7 @@ function handleBlankFile(file){
       const seen = {}, leftover = [];
       INV_GROUPS.forEach(g=>g.goods.forEach(gd=>{
         const cn = canon(gd.n);
-        if(!blankNames[cn] && !seen[cn]){ seen[cn] = true; leftover.push({n:gd.n, u:gd.u}); }
+        if(!blankNames[cn] && !seen[cn]){ seen[cn] = true; leftover.push({n:cleanProductName(gd.n), u:gd.u}); }
       }));
       const newGroups = groups.slice();
       if(leftover.length) newGroups.push({g:"База данных", goods:leftover});
@@ -2266,6 +2482,7 @@ function initInv(){
   renderRestSelect();
   INV_GROUPS = invLoadDict();
   invState = invLoadState(invRest);
+  dedupeGoodsDictionary();          // чистим возможные дубли/«@» от прежних импортов
   renderInvGroups();
   updateInvStats();
 
@@ -2276,6 +2493,7 @@ function initInv(){
     const icw = document.getElementById("impColWrap"); if(icw) icw.style.display = "none";
     INV_GROUPS = invLoadDict();
     invState = invLoadState(invRest);
+    dedupeGoodsDictionary();
     renderInvGroups(); updateInvStats();
   });
   document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
