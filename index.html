@@ -280,6 +280,13 @@
   .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
   .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
   .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px;white-space:nowrap}
+  /* недостача по строке, ₽ — под названием товара, чтобы не сжимать поле ввода */
+  .goods .gmoney{font-size:12px;line-height:1.3;margin-top:3px;color:var(--muted)}
+  .goods .gmoney::before{content:"недостача ";}
+  .gmoney .money{font-size:12px}
+  .money{display:inline-block;font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;white-space:nowrap}
+  .money.neg{color:var(--color-red)}
+  .money.zero{color:var(--muted);font-weight:400}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
   /* строка-ведомость (режим сверки): имя во всю ширину, ниже метрики */
@@ -291,6 +298,8 @@
   .lmetr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .lmetr .fstep{margin-right:auto}
   .lpf,.ldiff{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+  .lmoney{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+  .lmoney .money{font-size:15px}
   .lcap{font-size:10.5px;color:var(--muted);text-transform:none;margin-bottom:2px}
   .lpf .pfadd{font-size:15px;font-variant-numeric:tabular-nums;color:var(--muted)}
   .ldiff .diff{font-family:var(--font-display);font-weight:600;font-size:22px;
@@ -1404,17 +1413,27 @@ function renderRestSelect(){
 }
 
 const diffCells = {};
+const moneyCells = {};   // ячейки «недостача, ₽» по строке (вкладка «Товары»)
 
 function updateDiffByKey(key){
-  const cells = diffCells[key];
-  if(!cells || !cells.length) return;
-  const f = (invState.fact[key] || 0) + ((invState.pfAdd && invState.pfAdd[key]) || 0);
   const c = invState.calc[key] || 0;
+  const f = (invState.fact[key] || 0) + ((invState.pfAdd && invState.pfAdd[key]) || 0);
   const d = f - c;
-  cells.forEach(td=>{
-    td.textContent = fmtDiff(d);
-    td.className = "diff " + (d > 0.0005 ? "pos" : d < -0.0005 ? "neg" : "zero");
-  });
+  const money = rowShortage(d, nameFromKey(key));
+  const cells = diffCells[key];
+  if(cells && cells.length){
+    cells.forEach(td=>{
+      td.textContent = fmtDiff(d);
+      td.className = "diff " + (d > 0.0005 ? "pos" : d < -0.0005 ? "neg" : "zero");
+    });
+  }
+  const m = moneyCells[key];
+  if(m && m.length){
+    m.forEach(el=>{
+      el.textContent = money > 0 ? fmtMoney(money) : "—";
+      el.className = "money" + (money > 0 ? " neg" : " zero");
+    });
+  }
 }
 
 
@@ -1463,6 +1482,8 @@ function renderGroupsInto(boxId, showDiff){
   if(!box) return;
   box.innerHTML = "";
   if(showDiff){ for(const k in diffCells) delete diffCells[k]; }
+  for(const k in moneyCells) delete moneyCells[k];
+  const hasCosts = Object.keys(invState.costs || {}).length > 0;   // без себестоимости колонку «недостача» не рисуем
   const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
     if(g.g === "База данных" || g.g === "Импортированные") return;
@@ -1498,7 +1519,9 @@ function renderGroupsInto(boxId, showDiff){
 
     const tbl = document.createElement(showDiff ? "div" : "table");
     tbl.className = "goods";
-    if(!showDiff) tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+    if(!showDiff){
+      tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+    }
     if(showDiff) tbl.classList.add("ledger");
     goods.forEach((gd)=>{
       const key = goodKey(g.g, gd.n);
@@ -1559,7 +1582,18 @@ function renderGroupsInto(boxId, showDiff){
         dWrap.appendChild(tdDiff);
         (diffCells[key] = diffCells[key] || []).push(tdDiff);
 
+        // «недостача» по строке (числом) — только когда загружена себестоимость
+        let mWrap = null, mVal = null;
+        if(hasCosts){
+          mWrap = document.createElement("div"); mWrap.className = "lmoney";
+          mWrap.innerHTML = '<span class="lcap">недостача, ₽</span>';
+          mVal = document.createElement("span"); mVal.className = "money zero";
+          mWrap.appendChild(mVal);
+          (moneyCells[key] = moneyCells[key] || []).push(mVal);
+        }
+
         metr.append(pfWrap, dWrap);
+        if(mWrap) metr.appendChild(mWrap);
         row.append(nameEl, metr);
         tbl.appendChild(row);
         updateDiffByKey(key);
@@ -1569,12 +1603,21 @@ function renderGroupsInto(boxId, showDiff){
         const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
         const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
         tdName.append(nmSpan, unSpan);
+        // недостача по строке — отдельной строкой под названием, чтобы не сжимать поле ввода
+        if(hasCosts){
+          const mLine = document.createElement("div"); mLine.className = "gmoney";
+          const mSpan = document.createElement("span"); mSpan.className = "money zero";
+          mLine.appendChild(mSpan);
+          tdName.appendChild(mLine);
+          (moneyCells[key] = moneyCells[key] || []).push(mSpan);
+        }
         const tdFact = document.createElement("td");
         const f = buildFactInput();
         tdFact.appendChild(buildStepper(f));
         tr.appendChild(tdName);
         tr.appendChild(tdFact);
         tbl.appendChild(tr);
+        updateDiffByKey(key);   // заполняем значение строки сразу при отрисовке
       }
     });
     body.appendChild(tbl);
@@ -1706,6 +1749,15 @@ function costOf(name){
   const v = costs[canon(name)];
   return (typeof v === "number" && isFinite(v) && v > 0) ? v : 0;
 }
+/* Название товара из ключа вида «группа||название». */
+function nameFromKey(key){ return String(key||"").split("||").slice(1).join("||"); }
+/* Недостача одной позиции: только минус (факт − расчёт), умноженный на себестоимость. */
+function rowShortage(diff, name){
+  if(!(diff < -0.0005)) return 0;
+  const cost = costOf(name);
+  if(!(cost > 0)) return 0;
+  return Math.round(Math.abs(diff) * cost * 100) / 100;
+}
 /* Плитка «недостача, ₽» на вкладке «Товары»: минус по подсчитанным позициям × себестоимость.
    Плюс (излишек/пересорт) в сумму не входит — считаем только недостачу. */
 function shortageRollup(){
@@ -1750,6 +1802,7 @@ function updateShortageDisplay(roll){
   } else {
     let t = "Недостача: " + fmtMoney(r.sum) + " ₽ по " + r.rowsShort + " поз.";
     if(r.rowsNoCost) t += " · без себестоимости " + r.rowsNoCost;
+    t += " · по строкам — в колонке «недостача»";
     hint.textContent = t;
   }
 }
@@ -2381,6 +2434,7 @@ function applyCosts(cost, fileName){
       + " · без цены " + (names - withPrice);
   }
   updateShortageDisplay();
+  renderInvGroups();               // колонка «недостача» появляется сразу после загрузки цен
   toast("Себестоимость загружена: " + withPrice + " названий с ценой");
 }
 
