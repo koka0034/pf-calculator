@@ -131,6 +131,7 @@
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;
         padding:10px 14px;min-width:108px;flex:1}
   .stat b{display:block;font-size:20px;color:var(--acc)}
+  .stat b.shortage{color:var(--color-red)}
   .stat span{font-size:12px;color:var(--muted)}
   h2{font-family:var(--font-display);font-size:20px;letter-spacing:-.005em;color:var(--txt);
      margin:22px 2px 10px;font-weight:600}
@@ -505,7 +506,7 @@
         <button id="btnBlankImport" class="hbtn">Структура товаров (бланк)</button>
         <p class="hhint" style="margin-bottom:12px"><b>Структура товаров</b> — загрузи бланк (.xls/.xlsx), по нему строится список товаров и групп для подсчёта.</p>
         <button id="btnInvImportCalc" class="hbtn">Остатки из отчёта</button>
-        <p class="hhint"><b>Остатки из отчёта</b> — импорт остатков из отчёта (.xlsx). Столбец с остатками подбирается под текущий склад, при необходимости смени его в списке.</p>
+        <p class="hhint"><b>Остатки из отчёта</b> — импорт остатков из отчёта (.xlsx). Столбец с остатками подбирается под текущий склад, при необходимости смени его в списке.<br><b>Себестоимость для недостачи</b> — та же кнопка с отчётом «Об изменении себестоимости» (.xlsx): цены берутся из колонки «На конец периода, р.» раздела «Себестоимость за ед.».</p>
         <div id="impColWrap" style="display:none">
           <label for="impColSel" class="hfld" style="margin-top:12px">Столбец остатков из отчёта</label>
           <select id="impColSel"></select>
@@ -580,6 +581,10 @@
     <button id="btnInvSave2" class="uploadbtn">Выгрузить мой подсчёт</button>
     <p class="sub" id="uploadHint">Отправляет подсчёт на сервер (нужна активная сессия) и очищает поля.</p>
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
+    <div class="stats">
+      <div class="stat"><b id="invShortage">—</b><span>недостача, ₽</span></div>
+    </div>
+    <p class="sub" id="invShortageHint">Себестоимость не загружена</p>
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
     <button id="btnCountMode" class="grpadd">Показать сверку (из ПФ / ±)</button>
     <div id="invCountGroups"></div>
@@ -981,7 +986,7 @@ const DEFAULT_DICTS = {"Бар":[{"g":"Замороженные овощи, фр
 let INV_GROUPS = [];
 let invRestaurants = [];
 let invRest = "";
-let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
+let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
 let invShowAll = false;
 let invImportMode = "tsv";
 let invSearch = "";
@@ -1012,10 +1017,10 @@ function invPersistRests(){ invSetJSON(INV_LS + "_rests", invRestaurants); }
 
 function invRestKey(r){ return INV_LS + "_data::" + r; }
 function invLoadState(r){
-  if(!r) return { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
+  if(!r) return { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
   const d = invJSON(invRestKey(r), null);
-  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, pfAdd:d.pfAdd||{}, name:d.name||"", date:d.date||"" };
-  return { counters:{}, fact:{}, calc:{}, pfAdd:{}, name:"", date:"" };
+  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, pfAdd:d.pfAdd||{}, costs:d.costs||{}, name:d.name||"", date:d.date||"" };
+  return { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
 }
 function invSaveState(){
   if(!invRest) return;
@@ -1609,6 +1614,146 @@ function updateGroupCounters(){
   });
 }
 
+/* ---------- Себестоимость и стоимость недостачи ----------
+   Отчёт «Об изменении себестоимости» (iiko): столбец A — «Наименование»,
+   раздел «Себестоимость за ед.» содержит «На начало периода, р.» и
+   «На конец периода, р.». Колонку ищем по заголовкам, а не по номерам:
+   у отчёта бывают разные наборы разделов и смещения. */
+const COST_START_RE = /^на\s+начало\s+период/i;
+const COST_END_RE = /^на\s+конец\s+период/i;
+
+function costLabelKind(s){
+  const t = cleanProductName(s).toLowerCase().replace(/ё/g,"е").replace(/\s+/g," ");
+  if(!t) return "";
+  if(t.indexOf("себестоимост") >= 0) return "section";
+  if(COST_END_RE.test(t)) return "end";
+  if(COST_START_RE.test(t)) return "start";
+  if(t.indexOf("процент") === 0 || t.indexOf("изменени") >= 0) return "percent";
+  return "";
+}
+function findCostHeaderRow(aoa){
+  for(let r=0; r<Math.min(20, aoa.length); r++){
+    const row = aoa[r] || [];
+    for(let ci=0; ci<row.length; ci++){
+      const kind = costLabelKind(row[ci]);
+      if(kind === "end" || kind === "start") return r;
+    }
+  }
+  return -1;
+}
+/* Возвращает колонку себестоимости: раздел «Себестоимость за ед.» → «На конец периода».
+   Если раздел не подписан — берём последнюю подходящую колонку. */
+function findCostColumns(aoa){
+  const hr = findCostHeaderRow(aoa);
+  if(hr < 0) return { headerRow:-1, startCol:-1, endCol:-1, nameCol:-1 };
+  const row = aoa[hr] || [], prev = aoa[hr-1] || [];
+  const tokens = [];
+  for(let ci=0; ci<row.length; ci++){
+    const kind = costLabelKind(row[ci]);
+    if(kind !== "end" && kind !== "start") continue;
+    let section = "";
+    for(let pi=ci; pi>=0; pi--){
+      if(costLabelKind(prev[pi]) === "section"){ section = String(prev[pi]); break; }
+    }
+    tokens.push({ ci:ci, kind:kind, section:section, isCost:/себестоимост/i.test(section) });
+  }
+  if(!tokens.length) return { headerRow:hr, startCol:-1, endCol:-1, nameCol:0 };
+  const ends = tokens.filter(t=>t.kind === "end");
+  let target = ends.filter(t=>t.isCost)[0] || ends[0] || null;   // «на конец периода» раздела себестоимости
+  if(!target) target = tokens[tokens.length-1];
+  const starts = tokens.filter(t=>t.isCost && t.kind === "start" && t.ci < target.ci);
+  return { headerRow:hr, startCol:(starts.length ? starts[starts.length-1].ci : -1), endCol:target.ci, nameCol:0 };
+}
+/* Разбор отчёта себестоимости → {цены: {ключ названия: цена}, всего, сЦеной} */
+function parseCostWorkbook(wb){
+  const prices = {};
+  let rowsTotal = 0, withPrice = 0;
+  (wb && wb.SheetNames ? wb.SheetNames : []).forEach(sn=>{
+    const ws = wb.Sheets[sn];
+    if(!ws) return;
+    let aoa;
+    try{ aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:""}); }catch(e){ return; }
+    const cols = findCostColumns(aoa);
+    if(cols.endCol < 0) return;
+    for(let r=cols.headerRow+1; r<aoa.length; r++){
+      const row = aoa[r] || [];
+      const nm = cleanProductName(row[cols.nameCol]);
+      if(!nm) continue;
+      if(/^итого$/i.test(nm)) continue;
+      const cn = canon(nm);
+      if(!cn) continue;
+      rowsTotal++;
+      let price = toNum(row[cols.endCol]);
+      if(isNaN(price) || price <= 0){
+        let p2 = cols.startCol >= 0 ? toNum(row[cols.startCol]) : NaN;   // запасной вариант — «на начало периода»
+        price = (!isNaN(p2) && p2 > 0) ? p2 : NaN;
+      }
+      if(isNaN(price) || price <= 0){ if(!(cn in prices)) prices[cn] = null; continue; }
+      prices[cn] = price;   // при дубле названия оставляем последнюю ненулевую цену
+      withPrice++;
+    }
+  });
+  return { prices:prices, total:rowsTotal, withPrice:withPrice };
+}
+function costKey(){ return INV_LS + "_cost::" + invRest; }
+function invLoadCosts(){
+  const d = invJSON(costKey(), null);
+  return (d && typeof d === "object") ? d : {};
+}
+function invPersistCosts(){ try{ invSetJSON(costKey(), invState.costs || {}); }catch(e){} }
+function costOf(name){
+  const costs = invState.costs || {};
+  const v = costs[canon(name)];
+  return (typeof v === "number" && isFinite(v) && v > 0) ? v : 0;
+}
+/* Плитка «недостача, ₽» на вкладке «Товары»: минус по подсчитанным позициям × себестоимость.
+   Плюс (излишек/пересорт) в сумму не входит — считаем только недостачу. */
+function shortageRollup(){
+  const costs = invState.costs || {};
+  const hasCosts = Object.keys(costs).length > 0;
+  let sum = 0, rowsShort = 0, rowsNoCost = 0, unitsShort = 0;
+  INV_GROUPS.forEach(g=>{
+    if(g.g === "База данных") return;
+    g.goods.forEach(gd=>{
+      const key = goodKey(g.g, gd.n);
+      const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+      const counted = invState.fact[key] !== undefined || pf > 0;
+      if(!counted) return;                       // неучтённые позиции в недостачу не попадают
+      const diff = (invState.fact[key] || 0) + pf - (invState.calc[key] || 0);
+      if(diff >= -0.0005) return;
+      rowsShort++;
+      unitsShort += Math.abs(diff);
+      const cost = costOf(gd.n);
+      if(cost > 0) sum += Math.abs(diff) * cost;
+      else rowsNoCost++;
+    });
+  });
+  return { sum:Math.round(sum*100)/100, rowsShort:rowsShort, rowsNoCost:rowsNoCost, unitsShort:Math.round(unitsShort*1000)/1000, hasCosts:hasCosts };
+}
+function fmtMoney(v){
+  const n = Math.round((Number(v)||0)*100)/100;
+  return n.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function updateShortageDisplay(roll){
+  const r = roll || shortageRollup();
+  const el = document.getElementById("invShortage");
+  const hint = document.getElementById("invShortageHint");
+  if(el){
+    el.textContent = r.hasCosts ? fmtMoney(r.sum) : "—";
+    if(r.sum > 0) el.classList.add("shortage"); else el.classList.remove("shortage");
+  }
+  if(!hint) return;
+  if(!r.hasCosts){
+    hint.textContent = "Себестоимость не загружена";
+  } else if(!r.rowsShort){
+    hint.textContent = "Недостачи нет: минуса по подсчитанным позициям не найдено";
+  } else {
+    let t = "Недостача: " + fmtMoney(r.sum) + " ₽ по " + r.rowsShort + " поз.";
+    if(r.rowsNoCost) t += " · без себестоимости " + r.rowsNoCost;
+    hint.textContent = t;
+  }
+}
+
 function updateInvStats(){
   let total = 0, counted = 0, diffs = 0;
   INV_GROUPS.forEach(g=>{
@@ -1642,6 +1787,7 @@ function updateInvStats(){
   if(ti) ti.textContent = (invRest || "склад") + " · " + (counted ? (pct + "%") : "старт");
   const tp = document.getElementById("tabcPf");
   if(tp){ try{ const pfa = getInputs(); tp.textContent = Object.keys(pfa).length + " / " + ALL_PF.length; }catch(e){} }
+  updateShortageDisplay();
   updateGroupCounters();
   renderInvDiff();
 }
@@ -2194,6 +2340,13 @@ function handleFile(file){
     try{
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type:"array"});
+      /* Тот же файл-инпут принимает и остатки, и отчёт себестоимости.
+         Отчёт «Об изменении себестоимости» узнаём по колонке «На конец периода, р.». */
+      const cost = parseCostWorkbook(wb);
+      if(cost.total > 0 && cost.withPrice > 0){
+        applyCosts(cost, file.name);
+        return;
+      }
       const p = parseWorkbook(wb);
       if(!p.rows.length){
         res.textContent = "Не удалось распознать таблицу. Убедитесь, что в файле есть столбцы «название» и «количество», или пришлите пример отчёта.";
@@ -2212,6 +2365,23 @@ function handleFile(file){
   };
   reader.onerror = function(){ res.textContent = "Не удалось прочитать файл"; };
   reader.readAsArrayBuffer(file);
+}
+
+/* Загрузка себестоимости: сохраняем цены по названиям и сразу пересчитываем недостачу. */
+function applyCosts(cost, fileName){
+  const res = document.getElementById("invImportRes");
+  invState.costs = cost.prices;
+  invPersistCosts();
+  invSaveState();
+  const icw = document.getElementById("impColWrap"); if(icw) icw.style.display = "none";
+  const names = Object.keys(cost.prices).length;
+  const withPrice = Object.keys(cost.prices).filter(k=>cost.prices[k] !== null).length;
+  if(res){
+    res.textContent = "Себестоимость («" + fileName + "»): названий " + names + " · с ценой «на конец периода» " + withPrice
+      + " · без цены " + (names - withPrice);
+  }
+  updateShortageDisplay();
+  toast("Себестоимость загружена: " + withPrice + " названий с ценой");
 }
 
 function cleanBlank(s){ return String(s||"").replace(/@/g," ").replace(/\s+/g," ").trim(); }
@@ -2482,6 +2652,7 @@ function initInv(){
   renderRestSelect();
   INV_GROUPS = invLoadDict();
   invState = invLoadState(invRest);
+  invState.costs = invLoadCosts();     // себестоимость для стоимости недостачи
   dedupeGoodsDictionary();          // чистим возможные дубли/«@» от прежних импортов
   renderInvGroups();
   updateInvStats();
@@ -2493,6 +2664,7 @@ function initInv(){
     const icw = document.getElementById("impColWrap"); if(icw) icw.style.display = "none";
     INV_GROUPS = invLoadDict();
     invState = invLoadState(invRest);
+    invState.costs = invLoadCosts();
     dedupeGoodsDictionary();
     renderInvGroups(); updateInvStats();
   });
