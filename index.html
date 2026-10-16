@@ -132,6 +132,7 @@
         padding:10px 14px;min-width:108px;flex:1}
   .stat b{display:block;font-size:20px;color:var(--acc)}
   .stat b.shortage{color:var(--color-red)}
+  .stat b.over{color:var(--color-green)}
   .stat span{font-size:12px;color:var(--muted)}
   h2{font-family:var(--font-display);font-size:20px;letter-spacing:-.005em;color:var(--txt);
      margin:22px 2px 10px;font-weight:600}
@@ -280,12 +281,14 @@
   .goods .fstep button{width:30px;height:34px;min-width:30px;font-size:17px;border-radius:8px;flex:0 0 auto}
   .goods .fstep input{width:54px;max-width:54px;height:34px;flex:0 0 auto}
   .goods .diff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;font-size:13px;white-space:nowrap}
-  /* недостача по строке, ₽ — под названием товара, чтобы не сжимать поле ввода */
+  /* недостача/излишек по строке, ₽ — под названием товара, чтобы не сжимать поле ввода */
   .goods .gmoney{font-size:12px;line-height:1.3;margin-top:3px;color:var(--muted)}
   .goods .gmoney::before{content:"недостача ";}
+  .goods .gmoney.plus::before{content:"излишек ";}
   .gmoney .money{font-size:12px}
   .money{display:inline-block;font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;white-space:nowrap}
   .money.neg{color:var(--color-red)}
+  .money.pos{color:var(--color-green)}
   .money.zero{color:var(--muted);font-weight:400}
   .diff.neg{color:var(--danger)}
   .diff.pos{color:var(--acc2)}
@@ -592,6 +595,7 @@
     <input type="search" id="invSearch" class="invsearch" placeholder="Поиск товара…">
     <div class="stats">
       <div class="stat"><b id="invShortage">—</b><span>недостача, ₽</span></div>
+      <div class="stat"><b id="invSurplus">—</b><span>излишек, ₽</span></div>
     </div>
     <p class="sub" id="invShortageHint">Себестоимость не загружена</p>
     <button id="btnCountToggle" class="grpadd">Свернуть все группы</button>
@@ -1420,13 +1424,15 @@ function renderRestSelect(){
 }
 
 const diffCells = {};
-const moneyCells = {};   // ячейки «недостача, ₽» по строке (вкладка «Товары»)
+const moneyCells = {};   // ячейки сумм по строке (недостача/излишек) на вкладке «Товары»
+const moneyLabels = {};  // подписи «недостача, ₽» / «излишек, ₽» в режиме сверки
 
 function updateDiffByKey(key){
   const c = invState.calc[key] || 0;
   const f = (invState.fact[key] || 0) + ((invState.pfAdd && invState.pfAdd[key]) || 0);
   const d = f - c;
-  const money = rowShortage(d, nameFromKey(key));
+  const rm = rowMoney(d, nameFromKey(key));
+  const sign = rm.money > 0 ? (rm.sign < 0 ? -1 : 1) : 0;
   const cells = diffCells[key];
   if(cells && cells.length){
     cells.forEach(td=>{
@@ -1437,8 +1443,16 @@ function updateDiffByKey(key){
   const m = moneyCells[key];
   if(m && m.length){
     m.forEach(el=>{
-      el.textContent = money > 0 ? fmtMoney(money) : "—";
-      el.className = "money" + (money > 0 ? " neg" : " zero");
+      el.textContent = rm.money > 0 ? fmtMoney(rm.money) : "—";
+      el.className = "money" + (rm.money > 0 ? (sign < 0 ? " neg" : " pos") : " zero");
+    });
+  }
+  const l = moneyLabels[key];
+  if(l && l.length){
+    l.forEach(el=>{
+      // в подсчёте метка — часть обёртки (::before), в сверке — отдельный подпись-элемент
+      if(el.tagName === "SPAN") el.textContent = sign > 0 ? "излишек, ₽" : "недостача, ₽";
+      else el.classList.toggle("plus", sign > 0);
     });
   }
 }
@@ -1506,6 +1520,7 @@ function renderGroupsInto(boxId, showDiff){
   box.innerHTML = "";
   if(showDiff){ for(const k in diffCells) delete diffCells[k]; }
   for(const k in moneyCells) delete moneyCells[k];
+  for(const k in moneyLabels) delete moneyLabels[k];
   const hasCosts = Object.keys(invState.costs || {}).length > 0;   // без себестоимости колонку «недостача» не рисуем
   const q = canon(invSearch);
   INV_GROUPS.forEach((g, gi)=>{
@@ -1610,14 +1625,16 @@ function renderGroupsInto(boxId, showDiff){
         dWrap.appendChild(tdDiff);
         (diffCells[key] = diffCells[key] || []).push(tdDiff);
 
-        // «недостача» по строке (числом) — только когда загружена себестоимость
-        let mWrap = null, mVal = null;
+        // сумма по строке (недостача или излишек) — только когда загружена себестоимость
+        let mWrap = null, mVal = null, mCap = null;
         if(hasCosts){
           mWrap = document.createElement("div"); mWrap.className = "lmoney";
-          mWrap.innerHTML = '<span class="lcap">недостача, ₽</span>';
+          mCap = document.createElement("span"); mCap.className = "lcap"; mCap.textContent = "недостача, ₽";
+          mWrap.appendChild(mCap);
           mVal = document.createElement("span"); mVal.className = "money zero";
           mWrap.appendChild(mVal);
           (moneyCells[key] = moneyCells[key] || []).push(mVal);
+          (moneyLabels[key] = moneyLabels[key] || []).push(mCap);
         }
 
         metr.append(pfWrap, dWrap);
@@ -1638,6 +1655,7 @@ function renderGroupsInto(boxId, showDiff){
           mLine.appendChild(mSpan);
           tdName.appendChild(mLine);
           (moneyCells[key] = moneyCells[key] || []).push(mSpan);
+          (moneyLabels[key] = moneyLabels[key] || []).push(mLine);   // обёртка несёт подпись «недостача/излишек»
         }
         const tdFact = document.createElement("td");
         const f = buildFactInput();
@@ -1779,59 +1797,85 @@ function costOf(name){
 }
 /* Название товара из ключа вида «группа||название». */
 function nameFromKey(key){ return String(key||"").split("||").slice(1).join("||"); }
-/* Недостача одной позиции: только минус (факт − расчёт), умноженный на себестоимость. */
-function rowShortage(diff, name){
-  if(!(diff < -0.0005)) return 0;
+/* Деньги по строке и её знак: минус — недостача, плюс — излишек. */
+function rowMoney(diff, name){
+  if(Math.abs(diff) < 0.0005) return {money:0, sign:0};
   const cost = costOf(name);
-  if(!(cost > 0)) return 0;
-  return Math.round(Math.abs(diff) * cost * 100) / 100;
+  if(!(cost > 0)) return {money:0, sign:0};
+  return {money:Math.round(Math.abs(diff) * cost * 100) / 100, sign:(diff < 0 ? -1 : 1)};
 }
 /* Плитка «недостача, ₽» на вкладке «Товары»: минус по подсчитанным позициям × себестоимость.
    Плюс (излишек/пересорт) в сумму не входит — считаем только недостачу. */
-function shortageRollup(){
+/* Итоги по подсчитанным позициям: недостача (минус) и излишек (плюс) в рублях.
+   В общий счётчик идут только позиции от 50 ₽ — мелкие расхождения не засоряют итог,
+   но в строке видны все значения. */
+const MONEY_MIN = 50;
+function moneyRollup(){
   const costs = invState.costs || {};
   const hasCosts = Object.keys(costs).length > 0;
-  let sum = 0, rowsShort = 0, rowsNoCost = 0, unitsShort = 0;
+  let shortSum = 0, shortRows = 0, shortSmall = 0, shortNoCost = 0;
+  let overSum = 0, overRows = 0, overSmall = 0, overNoCost = 0;
   INV_GROUPS.forEach(g=>{
     if(g.g === "База данных") return;
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
       const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      if(!isCounted(key)) return;                // неучтённые позиции в недостачу не попадают
+      if(!isCounted(key)) return;                // неучтённые позиции в итоги не попадают
       const diff = (invState.fact[key] || 0) + pf - (invState.calc[key] || 0);
-      if(diff >= -0.0005) return;
-      rowsShort++;
-      unitsShort += Math.abs(diff);
+      if(Math.abs(diff) < 0.0005) return;
       const cost = costOf(gd.n);
-      if(cost > 0) sum += Math.abs(diff) * cost;
-      else rowsNoCost++;
+      if(!(cost > 0)){
+        if(diff < 0) shortNoCost++; else overNoCost++;
+        return;
+      }
+      const money = Math.round(Math.abs(diff) * cost * 100) / 100;
+      if(diff < 0){
+        shortRows++;
+        if(money < MONEY_MIN) shortSmall++; else shortSum += money;
+      } else {
+        overRows++;
+        if(money < MONEY_MIN) overSmall++; else overSum += money;
+      }
     });
   });
-  return { sum:Math.round(sum*100)/100, rowsShort:rowsShort, rowsNoCost:rowsNoCost, unitsShort:Math.round(unitsShort*1000)/1000, hasCosts:hasCosts };
+  return {
+    hasCosts:hasCosts, min:MONEY_MIN,
+    shortSum:Math.round(shortSum*100)/100, shortRows:shortRows, shortSmall:shortSmall, shortNoCost:shortNoCost,
+    overSum:Math.round(overSum*100)/100, overRows:overRows, overSmall:overSmall, overNoCost:overNoCost
+  };
 }
 function fmtMoney(v){
   const n = Math.round((Number(v)||0)*100)/100;
   return n.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 function updateShortageDisplay(roll){
-  const r = roll || shortageRollup();
+  const r = roll || moneyRollup();
   const el = document.getElementById("invShortage");
+  const ov = document.getElementById("invSurplus");
   const hint = document.getElementById("invShortageHint");
   if(el){
-    el.textContent = r.hasCosts ? fmtMoney(r.sum) : "—";
-    if(r.sum > 0) el.classList.add("shortage"); else el.classList.remove("shortage");
+    el.textContent = r.hasCosts ? fmtMoney(r.shortSum) : "—";
+    el.classList.toggle("shortage", r.shortSum > 0);
+  }
+  if(ov){
+    ov.textContent = r.hasCosts ? fmtMoney(r.overSum) : "—";
+    ov.classList.toggle("over", r.overSum > 0);
   }
   if(!hint) return;
-  if(!r.hasCosts){
-    hint.textContent = "Себестоимость не загружена";
-  } else if(!r.rowsShort){
-    hint.textContent = "Недостачи нет: минуса по подсчитанным позициям не найдено";
-  } else {
-    let t = "Недостача: " + fmtMoney(r.sum) + " ₽ по " + r.rowsShort + " поз.";
-    if(r.rowsNoCost) t += " · без себестоимости " + r.rowsNoCost;
-    t += " · по строкам — в колонке «недостача»";
-    hint.textContent = t;
+  if(!r.hasCosts){ hint.textContent = "Себестоимость не загружена"; return; }
+  const parts = [];
+  parts.push(r.shortRows
+    ? ("Недостача: " + fmtMoney(r.shortSum) + " ₽ по " + r.shortRows + " поз."
+       + (r.shortSmall ? " · мельче " + r.min + " ₽ у " + r.shortSmall + " поз. (в итог не входят)" : ""))
+    : "Недостачи нет");
+  if(r.overRows){
+    parts.push("Излишек: " + fmtMoney(r.overSum) + " ₽ по " + r.overRows + " поз."
+      + (r.overSmall ? " · мельче " + r.min + " ₽ у " + r.overSmall + " поз. (в итог не входят)" : ""));
   }
+  const noCost = r.shortNoCost + r.overNoCost;
+  if(noCost) parts.push("без себестоимости " + noCost + " поз.");
+  parts.push("итоги — от " + r.min + " ₽");
+  hint.textContent = parts.join(" · ");
 }
 
 function updateInvStats(){
