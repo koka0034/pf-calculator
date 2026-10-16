@@ -2398,6 +2398,42 @@ function renderImpCol(cols, selected){
   wrap.style.display = "";
 }
 
+/* Протухшие остатки от прежних импортов: позиции, которых нет в свежей выгрузке,
+   очищаются — иначе старые количества продолжают участвовать в расчёте недостачи
+   (например, товар выбыл из отчёта, а факт по нему остался с прошлого раза). */
+function cleanStaleStock(rows, qtyCol){
+  const present = {};
+  let matched = 0;
+  rows.forEach(pr=>{
+    if(!pr) return;
+    const k = canon(pr.name);
+    if(!k) return;
+    const q = impValue(pr, qtyCol);
+    if(isNaN(q)) return;
+    present[k] = true;
+    matched++;
+  });
+  if(!matched) return {cleared:0, matched:0};   // ничего не распознали — не трогаем данные
+  let cleared = 0;
+  INV_GROUPS.forEach(g=>{
+    g.goods.forEach(gd=>{
+      const k = goodKey(g.g, gd.n);
+      if(present[canon(gd.n)]) return;
+      let touched = false;
+      if(invState.fact[k] !== undefined){ delete invState.fact[k]; touched = true; }
+      if(invState.calc[k] !== undefined){ delete invState.calc[k]; touched = true; }
+      if(invState.pfAdd && invState.pfAdd[k] !== undefined){ delete invState.pfAdd[k]; touched = true; }
+      if(invState.counters && invState.counters[k] !== undefined){ delete invState.counters[k]; touched = true; }
+      if(touched) cleared++;
+    });
+  });
+  if(cleared){
+    invSaveState();
+    renderInvGroups(); updateInvStats(); renderInvDiff();
+  }
+  return {cleared:cleared, matched:matched};
+}
+
 function runImport(colIdx){
   const res = document.getElementById("invImportRes");
   if(!lastImport) return;
@@ -2405,12 +2441,17 @@ function runImport(colIdx){
   const cols = lastImport.cols || [];
   const lbl = (ci === null) ? "крайний правый столбец" : (((cols.filter(c=>c.i === ci)[0]) || {}).label || ("Столбец " + (ci+1)));
   const r2 = applyRows(lastImport.rows, "calc", ci);
+  const stale = r2.existing ? cleanStaleStock(lastImport.rows, ci) : {cleared:0};
   const warn = r2.existing ? "" : " · ни одна позиция не совпала — проверь склад вверху страницы";
   res.textContent = "Файл «" + lastImport.fileName + "»: столбец «" + lbl + "» · обновлено " + r2.existing
     + " · пропущено (нет в бланке) " + r2.skipped
+    + (stale.cleared ? " · очищено устаревших " + stale.cleared : "")
     + (r2.existing ? "" : (lastImport.sample && lastImport.sample.length ? " · пример: " + lastImport.sample.join(" · ") : ""))
     + warn;
-  if(r2.existing) toast("Импорт: обновлено " + r2.existing + " поз.");
+  if(r2.existing){
+    toast("Импорт: обновлено " + r2.existing + " поз."
+      + (stale.cleared ? " · очищено устаревших " + stale.cleared : ""));
+  }
 }
 
 function handleFile(file){
