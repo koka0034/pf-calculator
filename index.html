@@ -523,7 +523,7 @@
         <details class="hfold center">
           <summary><span class="hcar">›</span>Заполнить готовый бланк</summary>
           <div class="hbody">
-            <p class="hhint">Выбери шаблон бланка (.xls или .xlsx) — текущие остатки подставятся в колонку «Остаток фактический» / «Фактическое наличие». Колонки ищутся по заголовкам. Файл сохранится как <b>имя_заполненный.xlsx</b>; для .xls объединённые ячейки сохраняются, оформление может упроститься.</p>
+            <p class="hhint">Выбери шаблон бланка (.xls или .xlsx) — текущие остатки подставятся в колонку «Остаток фактический» / «Фактическое наличие». Колонки ищутся по заголовкам. Строки, где ничего не введено или введён 0, остаются пустыми. Файл сохранится как <b>имя_заполненный.xlsx</b>; для .xls объединённые ячейки сохраняются, оформление может упроститься.</p>
             <label for="rptTpl" class="hfld" style="margin-top:12px">Шаблон бланка (.xls / .xlsx)</label>
             <input type="file" id="rptTpl" accept=".xls,.xlsx">
             <div class="hbtns" style="margin-top:12px"><button id="btnReport" class="hbtn">Заполнить и скачать</button></div>
@@ -1002,6 +1002,12 @@ let invSearch = "";
 let invShowDiff = false;
 
 function goodKey(g, n){ return g + "||" + n; }
+/* Позиция считается посчитанной, если введено значение (включая явный 0)
+   или она получила количество из ПФ. Пустое поле — не посчитано. */
+function isCounted(k){
+  const f = invState.fact[k];
+  return (f !== undefined && f !== null && f !== "") || ((invState.pfAdd && invState.pfAdd[k]) || 0) > 0;
+}
 function canon(s){ return String(s||"").toLowerCase().replace(/@/g," ").replace(/\s+/g," ").trim(); }
 function toNum(v){
   const s = String(v==null?"":v).trim().replace(",", ".").replace(/\s/g,"");
@@ -1345,6 +1351,7 @@ async function doSbAccept(){
     const cur = (invState.fact[key] !== undefined) ? toNum(invState.fact[key]) : 0;
     const next = Math.round((cur + addFact[key])*1000)/1000;
     if(next > 0) invState.fact[key] = next;
+    else if(next === 0 && invState.fact[key] !== undefined) invState.fact[key] = 0;   // посчитанный ноль сохраняем
     else delete invState.fact[key];
   }
   let pfChanged = false;
@@ -1444,8 +1451,8 @@ function stepFact(key, inp, d){
   const cur = invState.fact[key] !== undefined ? invState.fact[key] : 0;
   let next = Math.round((cur + d) * 1000) / 1000;
   if(next < 0) next = 0;
-  if(next === 0){ delete invState.fact[key]; inp.value = ""; }
-  else { invState.fact[key] = next; inp.value = next; }
+  invState.fact[key] = next;   // 0 — тоже результат подсчёта, не удаляем
+  inp.value = next;
   updateDiffByKey(key); updateInvStats(); invSaveState();
   syncFactTwins(key, inp);
 }
@@ -1508,7 +1515,7 @@ function renderGroupsInto(boxId, showDiff){
     const det = document.createElement("details");
     det.className = "igrp";
     det.dataset.g = g.g;
-    const has = goods.some(gd => invState.fact[goodKey(g.g, gd.n)] !== undefined || (invState.pfAdd && invState.pfAdd[goodKey(g.g, gd.n)]));
+    const has = goods.some(gd => isCounted(goodKey(g.g, gd.n)));
     det.open = has || !!q;
     const sum = document.createElement("summary");
     const caret = document.createElement("span"); caret.className="caret"; caret.textContent="›";
@@ -1518,7 +1525,7 @@ function renderGroupsInto(boxId, showDiff){
     let gCounted = 0;
     g.goods.forEach(gd=>{
       const k = goodKey(g.g, gd.n);
-      if(invState.fact[k] !== undefined || (invState.pfAdd && invState.pfAdd[k])) gCounted++;
+      if(isCounted(k)) gCounted++;
     });
     const gpct = gTotal ? Math.round(gCounted/gTotal*100) : 0;
     gcnt.textContent = gCounted + "/" + gTotal + " · " + gpct + "%";
@@ -1554,8 +1561,10 @@ function renderGroupsInto(boxId, showDiff){
         f.addEventListener("change", ()=>{
           let n = toNum(f.value) || 0;
           if(n < 0) n = 0;
-          if(n === 0){ delete invState.fact[key]; f.value = ""; }
-          else { invState.fact[key] = n; f.value = n; }
+          /* Явный ноль — это «посчитано, остаток 0»: храним его, иначе позиция
+             выглядит непосчитанной и весь расчёт уходит в недостачу. */
+          invState.fact[key] = n;
+          f.value = n;
           updateDiffByKey(key); updateInvStats(); invSaveState();
           syncFactTwins(key, f);
         });
@@ -1663,7 +1672,7 @@ function updateGroupCounters(){
     let gCounted = 0;
     g.goods.forEach(gd=>{
       const k = goodKey(g.g, gd.n);
-      if(invState.fact[k] !== undefined || (invState.pfAdd && invState.pfAdd[k])) gCounted++;
+      if(isCounted(k)) gCounted++;
     });
     const gpct = gTotal ? Math.round(gCounted/gTotal*100) : 0;
     const gcnt = det.querySelector(".gcnt");
@@ -1788,8 +1797,7 @@ function shortageRollup(){
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
       const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      const counted = invState.fact[key] !== undefined || pf > 0;
-      if(!counted) return;                       // неучтённые позиции в недостачу не попадают
+      if(!isCounted(key)) return;                // неучтённые позиции в недостачу не попадают
       const diff = (invState.fact[key] || 0) + pf - (invState.calc[key] || 0);
       if(diff >= -0.0005) return;
       rowsShort++;
@@ -1834,10 +1842,11 @@ function updateInvStats(){
       total++;
       const key = goodKey(g.g, gd.n);
       const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      if(invState.fact[key] !== undefined || pf > 0) counted++;
+      const countedRow = isCounted(key);
+      if(countedRow) counted++;
       const f = (invState.fact[key] || 0) + pf;
       const c = invState.calc[key] || 0;
-      if((invState.fact[key] !== undefined || pf > 0) && Math.abs(f - c) > 0.0005) diffs++;
+      if(countedRow && Math.abs(f - c) > 0.0005) diffs++;
     });
   });
   document.getElementById("invTotal").textContent = total;
@@ -1872,7 +1881,7 @@ function renderInvDiff(){
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
       const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      const counted = invState.fact[key] !== undefined || pf > 0;
+      const counted = isCounted(key);
       const f = counted ? ((invState.fact[key] || 0) + pf) : null;
       const c = invState.calc[key] || 0;
       const d = counted ? (f - c) : null;
@@ -2135,7 +2144,7 @@ function printDiff(){
     g.goods.forEach(gd=>{
       const key = goodKey(g.g, gd.n);
       const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
-      const has = invState.fact[key] !== undefined || pf > 0;
+      const has = isCounted(key);
       if(!has) return;
       const f = (invState.fact[key] || 0) + pf;
       const c = invState.calc[key] || 0;
@@ -2630,6 +2639,10 @@ function buildReportGoods(){
       const key = goodKey(g.g, gd.n);
       const f = invState.fact[key];
       if(f === undefined || f === null || f === "") return;
+      /* В бланк уходят только реально введённые значения: нули и непосчитанные
+         строки остаются пустыми, чтобы не подставлять «0» там, где не считали. */
+      const num = toNum(f);
+      if(isNaN(num) || num === 0) return;
       rows.push({name:gd.n, val:f});
     });
   });
