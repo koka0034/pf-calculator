@@ -449,6 +449,43 @@
   .stepper input{height:44px}
   .imphd{text-align:center;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt);margin:16px 0 8px}
   .goods .fstep button,.stepper button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+
+  /* ───────── ПК-режим вкладки «Товары»: одна строка на товар ───────── */
+  .wrap.pc-wide{max-width:1120px}
+  .panehd{display:flex;align-items:center;gap:10px;margin:6px 2px 10px}
+  .panehd .h2big{flex:1;min-width:0;margin:0;text-align:center}
+  .wrap.pc .panehd .h2big{text-align:left}
+  .devbtn{display:inline-flex;align-items:center;gap:2px;height:38px;padding:0 4px;border-radius:11px;
+    border:1px solid var(--line);background:var(--card);cursor:pointer;flex:0 0 auto}
+  .devbtn .seg{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px;border-radius:8px;
+    color:var(--muted);font-size:11.5px;font-weight:600;background:none;border:0;cursor:pointer;font-family:inherit}
+  .devbtn .seg.on{background:var(--card2);color:var(--color-amber-2);box-shadow:inset 0 0 0 1px var(--color-amber)}
+  .devbtn svg{width:15px;height:15px;display:block}
+
+  .pck{display:block;width:100%;font-size:13px}
+  .pck .thead,.pck .drow{display:grid;align-items:center;gap:8px;
+    grid-template-columns:minmax(0,1fr) 38px 124px 58px 58px 54px 88px 104px;padding:0 8px}
+  .pck .thead{height:28px;border-bottom:1px solid var(--line);color:var(--muted);
+    font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}
+  .pck .thead span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pck .drow{min-height:36px;border-bottom:1px solid var(--line)}
+  .pck .drow:last-child{border-bottom:none}
+  .pck .drow:hover{background:#2A2016}
+  .pck .nm{display:flex;align-items:baseline;gap:6px;min-width:0}
+  .pck .nm .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+  .pck .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;
+    font-size:13px;color:var(--muted)}
+  .pck .num.diff{font-weight:700}
+  .pck .num.diff.pos{color:var(--acc2)}
+  .pck .num.diff.neg{color:var(--danger)}
+  .pck .num.diff.zero{color:var(--muted);font-weight:400}
+  .pck .num.money{font-weight:700}
+  .pck .num.money.pos{color:var(--acc2)}
+  .pck .num.money.neg{color:var(--danger)}
+  .pck .num.money.zero{color:var(--muted);font-weight:400}
+  .pck .fstep{justify-content:flex-end}
+  .pck .fstep button{width:26px;height:28px;min-width:26px;font-size:14px;border-radius:7px}
+  .pck .fstep input{width:56px;max-width:56px;height:28px;font-size:14px}
 </style>
 </head>
 <body>
@@ -585,7 +622,19 @@
   </section>
 
   <section id="tab-count" class="pane hidden">
-    <h2 class="h2big">Подсчёт товаров</h2>
+    <div class="panehd">
+      <h2 class="h2big">Подсчёт товаров</h2>
+      <div class="devbtn" id="devBtn" role="group" aria-label="Режим отображения">
+        <button type="button" class="seg" id="segPc" title="Режим для компьютера (широкий). Нажмите ещё раз — авто по ширине экрана">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="19" height="13" rx="2"></rect><path d="M8 20.5h8M12 16.5v4"></path></svg>
+          ПК
+        </button>
+        <button type="button" class="seg" id="segM" title="Мобильный вид. Нажмите ещё раз — авто по ширине экрана">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"></rect><path d="M10.5 18.5h3"></path></svg>
+          Тел
+        </button>
+      </div>
+    </div>
     <div class="progwrap">
       <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
@@ -1437,14 +1486,16 @@ function updateDiffByKey(key){
   if(cells && cells.length){
     cells.forEach(td=>{
       td.textContent = fmtDiff(d);
-      td.className = "diff " + (d > 0.0005 ? "pos" : d < -0.0005 ? "neg" : "zero");
+      const base = (td.dataset && td.dataset.diffBase) || "diff";
+      td.className = base + " " + (d > 0.0005 ? "pos" : d < -0.0005 ? "neg" : "zero");
     });
   }
   const m = moneyCells[key];
   if(m && m.length){
     m.forEach(el=>{
       el.textContent = rm.money > 0 ? fmtMoney(rm.money) : "—";
-      el.className = "money" + (rm.money > 0 ? (sign < 0 ? " neg" : " pos") : " zero");
+      const base = (el.dataset && el.dataset.moneyBase) || "money";
+      el.className = base + (rm.money > 0 ? (sign < 0 ? " neg" : " pos") : " zero");
     });
   }
   const l = moneyLabels[key];
@@ -1471,8 +1522,60 @@ function stepFact(key, inp, d){
   syncFactTwins(key, inp);
 }
 
+/* ---------- Режим отображения «Товары»: ПК (широкий) / телефон ----------
+   Авто по ширине экрана, ручной выбор запоминается. В ПК-режиме каждый товар —
+   одна строка: название · ед. · факт · из ПФ · расчёт · ± · цена · сумма. */
+const VIEW_LS = "pfcalc_viewmode";
+const PC_MIN_WIDTH = 1000;
+function viewPref(){
+  try{ const v = localStorage.getItem(VIEW_LS); return (v === "pc" || v === "m") ? v : ""; }catch(e){ return ""; }
+}
+function setViewPref(v){
+  try{ if(v) localStorage.setItem(VIEW_LS, v); else localStorage.removeItem(VIEW_LS); }catch(e){}
+}
+function isDeskView(){
+  const p = viewPref();
+  if(p === "pc") return true;
+  if(p === "m") return false;
+  return (window.innerWidth || 9999) >= PC_MIN_WIDTH;
+}
+function applyViewMode(){
+  const pc = isDeskView();
+  const wrap = document.querySelector(".wrap");
+  if(wrap) wrap.classList.toggle("pc", pc);
+  syncWrapWidth();
+  const segPc = document.getElementById("segPc"), segM = document.getElementById("segM");
+  if(segPc) segPc.classList.toggle("on", pc);
+  if(segM) segM.classList.toggle("on", !pc);
+  const modeBtn = document.getElementById("btnCountMode");
+  if(modeBtn) modeBtn.style.display = pc ? "none" : "";   // в ПК всё видно сразу, сверка не нужна
+  return pc;
+}
+/* Широкий контейнер — только на вкладке «Товары» в ПК-режиме, остальные вкладки не трогаем */
+function syncWrapWidth(){
+  const wrap = document.querySelector(".wrap");
+  const tab = document.getElementById("tab-count");
+  if(!wrap || !tab) return;
+  wrap.classList.toggle("pc-wide", isDeskView() && !tab.classList.contains("hidden"));
+}
+function changeViewMode(v){
+  setViewPref(v);
+  applyViewMode();
+  renderInvGroups();
+}
+function buildDeskHead(){
+  const h = document.createElement("div"); h.className = "thead";
+  ["Наименование", "Ед.", "Факт", "Из ПФ", "Расчёт", "±", "Цена ₽", "Сумма ₽"].forEach(function(txt){
+    const s = document.createElement("span"); s.textContent = txt;
+    h.appendChild(s);
+  });
+  return h;
+}
+
 function renderInvGroups(){
-  renderGroupsInto("invCountGroups", invShowDiff);
+  const wrap = document.querySelector(".wrap");
+  const pc = !!(wrap && wrap.classList.contains("pc"));
+  renderGroupsInto("invCountGroups", pc ? false : invShowDiff);   // в ПК-режиме «сверка» не нужна: колонки уже есть
 }
 
 function syncFactTwins(key, except){
@@ -1555,12 +1658,20 @@ function renderGroupsInto(boxId, showDiff){
     const body = document.createElement("div");
     body.className = "gbody";
 
-    const tbl = document.createElement(showDiff ? "div" : "table");
-    tbl.className = "goods";
-    if(!showDiff){
-      tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+    const pcView = isDeskView();
+    let tbl;
+    if(pcView){
+      tbl = document.createElement("div");
+      tbl.className = "goods pck";
+      tbl.appendChild(buildDeskHead());
+    } else {
+      tbl = document.createElement(showDiff ? "div" : "table");
+      tbl.className = "goods";
+      if(!showDiff){
+        tbl.innerHTML = '<tr><th class="gn">Товар</th><th>Факт</th></tr>';
+      }
+      if(showDiff) tbl.classList.add("ledger");
     }
-    if(showDiff) tbl.classList.add("ledger");
     goods.forEach((gd)=>{
       const key = goodKey(g.g, gd.n);
 
@@ -1600,6 +1711,40 @@ function renderGroupsInto(boxId, showDiff){
         st.append(bm, f, bp);
         return st;
       };
+
+      if(pcView){
+        /* ПК-строка: всё в одну линию — название, ед., факт, из ПФ, расчёт, ±, цена, сумма */
+        const row = document.createElement("div"); row.className = "drow";
+        const nm = document.createElement("div"); nm.className = "nm";
+        const t = document.createElement("span"); t.className = "t"; t.textContent = gd.n; t.title = gd.n;
+        nm.appendChild(t);
+
+        const f = buildFactInput();
+        const st = buildStepper(f);
+
+        const uEl = document.createElement("span"); uEl.className = "num"; uEl.textContent = gd.u || "";
+        const pf = (invState.pfAdd && invState.pfAdd[key]) || 0;
+        const pfEl = document.createElement("span"); pfEl.className = "num"; pfEl.textContent = pf > 0 ? fmt(pf) : "—";
+        const calcVal = invState.calc[key] || 0;
+        const calcEl = document.createElement("span"); calcEl.className = "num"; calcEl.textContent = calcVal > 0 ? fmt(calcVal) : "—";
+
+        const dEl = document.createElement("span"); dEl.className = "num diff";
+        dEl.dataset.diffBase = "num diff";
+        (diffCells[key] = diffCells[key] || []).push(dEl);
+
+        const cost = costOf(gd.n);
+        const priceEl = document.createElement("span"); priceEl.className = "num";
+        priceEl.textContent = cost > 0 ? fmtMoney(cost) : "—";
+
+        const mEl = document.createElement("span"); mEl.className = "num money";
+        mEl.dataset.moneyBase = "num money";
+        (moneyCells[key] = moneyCells[key] || []).push(mEl);
+
+        row.append(nm, uEl, st, pfEl, calcEl, dEl, priceEl, mEl);
+        tbl.appendChild(row);
+        updateDiffByKey(key);
+        return;
+      }
 
       if(showDiff){
         // строка-ведомость: имя во всю ширину, ниже метрики (факт · из ПФ · ±)
@@ -2173,6 +2318,7 @@ function toggleCountGroups(){
 }
 
 function toggleCountMode(){
+  if(isDeskView()) return;   // в ПК-режиме всё видно в строке, сверка не нужна
   invShowDiff = !invShowDiff;
   const b = document.getElementById("btnCountMode");
   if(b) b.textContent = invShowDiff ? "Скрыть сверку (из ПФ / ±)" : "Показать сверку (из ПФ / ±)";
@@ -2714,6 +2860,7 @@ function switchTab(tab){
   document.getElementById("tab-count").classList.toggle("hidden", tab !== "count");
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
+  if(typeof syncWrapWidth === "function") syncWrapWidth();   // широкий контейнер только для «Товаров» в ПК-режиме
 }
 
 const RPT_HEADERS = new Set(["наименование","наименование товара","наименован","товар","название","итого"]);
@@ -2883,6 +3030,7 @@ function initInv(){
   invState = invLoadState(invRest);
   invState.costs = invLoadCosts();     // себестоимость для стоимости недостачи
   dedupeGoodsDictionary();          // чистим возможные дубли/«@» от прежних импортов
+  applyViewMode();                  // ПК/телефон: авто по ширине + сохранённый выбор
   renderInvGroups();
   updateInvStats();
 
@@ -2948,6 +3096,24 @@ renderHist();
 renderSessionInfo();
 loadRole();
 applyRole();
+
+/* Переключатель ПК/телефон: клик по активному сегменту возвращает авто-режим */
+(function(){
+  var segPc = document.getElementById("segPc"), segM = document.getElementById("segM");
+  if(segPc) segPc.addEventListener("click", function(){ changeViewMode(viewPref() === "pc" ? "" : "pc"); });
+  if(segM) segM.addEventListener("click", function(){ changeViewMode(viewPref() === "m" ? "" : "m"); });
+  var t = null;
+  window.addEventListener("resize", function(){
+    clearTimeout(t);
+    t = setTimeout(function(){
+      var wrap = document.querySelector(".wrap");
+      var before = !!(wrap && wrap.classList.contains("pc"));
+      applyViewMode();
+      var after = !!(wrap && wrap.classList.contains("pc"));
+      if(before !== after) renderInvGroups();
+    }, 150);
+  });
+})();
 
 /* iOS P0-2: числовая клавиатура iPhone не имеет Enter → механика «Enter→следующее поле»
    там не работает. Показываем плавающую кнопку «Дальше →» при фокусе числового поля.
