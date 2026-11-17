@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+?<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -486,6 +486,31 @@
   .pck .fstep{justify-content:flex-end}
   .pck .fstep button{width:26px;height:28px;min-width:26px;font-size:14px;border-radius:7px}
   .pck .fstep input{width:56px;max-width:56px;height:28px;font-size:14px}
+
+  /* ── режим «Суммировать» ── */
+  .addbtn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 11px;border-radius:11px;
+    border:1px solid var(--line);background:var(--card);color:var(--muted);
+    font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex:0 0 auto}
+  .addbtn .plus{font-size:15px;line-height:1;font-weight:700}
+  .addbtn.on{border-color:var(--color-green);color:var(--color-green);background:var(--card2)}
+  .addnote{display:none;color:var(--color-green);font-size:12.5px;margin:2px 2px 10px}
+  .wrap.addmode .addnote{display:block}
+  .wrap.addmode input.factinp,
+  .wrap.addmode .stepper input{border-color:var(--color-green);background:#131A0F}
+  input.addpending{border-color:var(--color-amber-2) !important;background:#1B1509 !important}
+  @media (max-width:520px){
+    .addbtn .lbl{display:none}
+    .panehd{gap:6px}
+    .panehd .h2big{font-size:14px;letter-spacing:.3px}
+    .addbtn{height:34px;padding:0 9px;border-radius:10px}
+    .devbtn{height:34px;padding:0 3px;border-radius:10px}
+    .devbtn .seg{height:26px;padding:0 6px}
+  }
+
+  /* кнопка отмены в тосте */
+  .toast .toast-act{margin-left:10px;padding:3px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.35);
+    background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;pointer-events:auto}
+  .toast.act{pointer-events:none}
 </style>
 </head>
 <body>
@@ -624,6 +649,7 @@
   <section id="tab-count" class="pane hidden">
     <div class="panehd">
       <h2 class="h2big">Подсчёт товаров</h2>
+      <button type="button" id="btnAddMode" class="addbtn" aria-pressed="false" title="Ввод прибавляется к текущему; «−1,5» — вычитается (без режима тоже работает)"><span class="plus">±</span><span class="lbl">Суммировать</span></button>
       <div class="devbtn" id="devBtn" role="group" aria-label="Режим отображения">
         <button type="button" class="seg" id="segPc" title="Режим для компьютера (широкий). Нажмите ещё раз — авто по ширине экрана">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="19" height="13" rx="2"></rect><path d="M8 20.5h8M12 16.5v4"></path></svg>
@@ -635,6 +661,7 @@
         </button>
       </div>
     </div>
+    <p class="sub addnote">± Суммировать: введённое прибавляется к текущему, «−1,5» — вычитается (можно без режима)</p>
     <div class="progwrap">
       <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
@@ -654,6 +681,11 @@
   </section>
 
   <section id="tab-pf" class="pane hidden">
+    <div class="panehd">
+      <h2 class="h2big">Подсчёт ПФ</h2>
+      <button type="button" id="btnAddModePf" class="addbtn" aria-pressed="false" title="Ввод прибавляется к текущему; «−1,5» — вычитается (без режима тоже работает)"><span class="plus">±</span><span class="lbl">Суммировать</span></button>
+    </div>
+    <p class="sub addnote">± Суммировать: введённое прибавляется к текущему, «−1,5» — вычитается (можно без режима)</p>
     <div class="stats">
       <div class="stat"><b id="stPf">0</b><span>ПФ с остатком</span></div>
       <div class="stat"><b id="stTov">0</b><span>товаров в раскладке</span></div>
@@ -769,8 +801,7 @@ function localNow(){
 function getQ(i){
   const inp = document.querySelector('input[data-i="'+i+'"]');
   return parseFloat((inp.value||"").replace(",", ".")) || 0;
-}
-function setQ(i, q){
+}function setQ(i, q){
   const inp = document.querySelector('input[data-i="'+i+'"]');
   inp.value = q ? q : "";
   inp.closest(".pf").classList.toggle("active", q > 0);
@@ -816,11 +847,171 @@ function computeTotals(v){
 }
 
 function addStep(i, d){
+  const inp = document.querySelector('input[data-i="'+i+'"]');
+  if(inp && inp.dataset.pending === "1") commitPfInput(i, inp);   // сначала применить недописанную добавку
   let q = getQ(i);
   q = Math.max(0, Math.round((q + d) * 100) / 100);
   setQ(i, q);
   recompute();
   persistPfInputs();
+}
+
+/* ---------- Режим «Суммировать»: ввод прибавляется к текущему значению ----------
+   Работает и в «Товарах», и в «ПФ». Включён только до перезагрузки (не запоминается).
+   Дополнительно: ввод «+1,5» прибавляет и без включения режима (удобно с клавиатуры). */
+let invAddMode = false;
+let lastAdd = null;        // для отмены последнего добавления
+const addLog = {};         // история добавок по позиции: {base, items:[...]}
+
+function addLogKey(kind, id){ return (kind === "fact" ? "fact:" : "pf:") + id; }
+function clearAddLogs(prefix){
+  for(const k in addLog){ if(k.indexOf(prefix) === 0) delete addLog[k]; }
+  lastAdd = null;
+}
+function addTitleText(logKey, total){
+  const l = addLog[logKey];
+  if(!l || !l.items.length) return "";
+  const parts = [];
+  if(l.base) parts.push(fmt(l.base));
+  l.items.forEach(function(v){ parts.push((v < 0 ? "− " : "+ ") + fmt(Math.abs(v))); });
+  return "Добавки: " + parts.join(" ") + " = " + fmt(total);
+}
+function refreshAddTitle(kind, id, total){
+  const logKey = addLogKey(kind, id);
+  const txt = addTitleText(logKey, total);
+  const list = document.querySelectorAll(kind === "fact" ? "input.factinp" : "input[data-i]");
+  Array.prototype.forEach.call(list, function(inp){
+    const match = (kind === "fact") ? inp.dataset.key === String(id) : String(inp.dataset.i) === String(id);
+    if(!match) return;
+    if(txt) inp.title = txt; else inp.removeAttribute("title");
+  });
+}
+function pushAdd(kind, id, before, after, delta, existed){
+  lastAdd = { kind:kind, id:id, before:before, after:after, existed:!!existed };
+  const logKey = addLogKey(kind, id);
+  const l = addLog[logKey] || (addLog[logKey] = { base: before, items: [] });
+  l.items.push(delta);
+  refreshAddTitle(kind, id, after);
+  const word = delta < 0 ? "Вычтено " : "Добавлено ";
+  toast(word + fmt(Math.abs(delta)) + " → " + fmt(after), undefined, { label: "Отменить", fn: undoLastAdd });
+}
+function undoLastAdd(){
+  const a = lastAdd;
+  if(!a) return;
+  lastAdd = null;
+  const logKey = addLogKey(a.kind, a.id);
+  if(addLog[logKey]){
+    addLog[logKey].items.pop();
+    if(!addLog[logKey].items.length) delete addLog[logKey];
+  }
+  if(a.kind === "fact"){
+    if(a.existed) invState.fact[a.id] = a.before; else delete invState.fact[a.id];
+    invSaveState();
+    renderInvGroups(); updateInvStats();
+  } else {
+    setQ(a.id, a.before);
+    const el = document.querySelector('input[data-i="' + a.id + '"]');
+    if(el) el.dataset.base = a.before ? String(a.before) : "";
+    refreshAddTitle("pf", a.id, a.before);
+    recompute(); persistPfInputs();
+  }
+  toast("Добавление отменено");
+}
+function setAddMode(on){
+  invAddMode = !!on;
+  const wrap = document.querySelector(".wrap");
+  if(wrap) wrap.classList.toggle("addmode", invAddMode);
+  ["btnAddMode", "btnAddModePf"].forEach(function(id){
+    const b = document.getElementById(id);
+    if(b){ b.classList.toggle("on", invAddMode); b.setAttribute("aria-pressed", invAddMode ? "true" : "false"); }
+  });
+}
+function toggleAddMode(){
+  setAddMode(!invAddMode);
+  toast(invAddMode ? "± Суммировать: «1,5» прибавится, «−1,5» вычтется" : "Обычный режим: ввод заменяет значение");
+}
+
+/* Применяет введённое в поле «Факт». В режиме сложения — прибавляет, иначе заменяет.
+   Ввод с ведущим «+» всегда означает добавку. */
+function commitFactInput(key, inp){
+  const raw = String(inp.value == null ? "" : inp.value).trim();
+  const p = parseAmount(raw);
+  const asDelta = invAddMode || p.delta;
+  const has = invState.fact[key] !== undefined && invState.fact[key] !== null && invState.fact[key] !== "";
+  const cur = has ? (toNum(invState.fact[key]) || 0) : 0;
+  delete inp.dataset.pending;
+  inp.classList.remove("addpending");
+  inp.dataset.committed = "1";
+
+  if(raw === ""){
+    if(asDelta){ inp.value = has ? cur : ""; }         // пусто в режиме сложения — сумму не трогаем
+    else { delete invState.fact[key]; delete addLog["fact:" + key]; inp.value = ""; inp.removeAttribute("title"); }
+    updateDiffByKey(key); updateInvStats(); invSaveState(); syncFactTwins(key, inp);
+    return;
+  }
+  if(!p.ok){                                            // не число (например, один знак) — вернуть как было
+    inp.value = has ? cur : "";
+    updateDiffByKey(key);
+    return;
+  }
+  if(asDelta){
+    const want = (p.delta ? p.sign : 1) * p.value;      // «−1,5» — вычитание, «1,5» в режиме — прибавление
+    if(want === 0){ inp.value = has ? cur : ""; updateDiffByKey(key); return; }
+    const next = Math.max(0, Math.round((cur + want) * 1000) / 1000);
+    const applied = Math.round((next - cur) * 1000) / 1000;
+    if(applied === 0){ inp.value = has ? cur : ""; updateDiffByKey(key); return; }
+    invState.fact[key] = next;
+    inp.value = next;
+    pushAdd("fact", key, cur, next, applied, has);
+    invSaveState(); updateDiffByKey(key); updateInvStats(); syncFactTwins(key, inp);
+    if(invAddMode){ try{ inp.select(); }catch(e){} }
+    return;
+  }
+  // замена; «2,2+1,5-0,5» превращается в 3,2
+  delete addLog["fact:" + key];
+  inp.removeAttribute("title");
+  invState.fact[key] = Math.max(0, p.value);
+  inp.value = invState.fact[key];
+  updateDiffByKey(key); updateInvStats(); invSaveState(); syncFactTwins(key, inp);
+}
+
+/* То же для полей ПФ (индексы ALL_PF). Базу берём из dataset.base — значение до правки. */
+function commitPfInput(i, inp){
+  const raw = String(inp.value == null ? "" : inp.value).trim();
+  const p = parseAmount(raw);
+  const asDelta = invAddMode || p.delta;
+  const baseRaw = inp.dataset.base;
+  const cur = (baseRaw !== undefined && baseRaw !== "") ? (parseFloat(baseRaw.replace(",", ".")) || 0) : 0;
+  delete inp.dataset.pending;
+  inp.classList.remove("addpending");
+  inp.dataset.committed = "1";
+
+  if(raw === ""){
+    if(!asDelta){ setQ(i, 0); delete addLog["pf:" + i]; inp.removeAttribute("title"); }
+    else { inp.value = cur ? cur : ""; }
+    recompute(); persistPfInputs();
+    return;
+  }
+  if(!p.ok){ inp.value = cur ? cur : ""; recompute(); persistPfInputs(); return; }
+  if(asDelta){
+    const want = (p.delta ? p.sign : 1) * p.value;
+    if(want === 0){ inp.value = cur ? cur : ""; return; }
+    const next = Math.max(0, Math.round((cur + want) * 1000) / 1000);
+    const applied = Math.round((next - cur) * 1000) / 1000;
+    if(applied === 0){ inp.value = cur ? cur : ""; return; }
+    setQ(i, next);
+    inp.dataset.base = String(next);       // повторная добавка/вычитание считается от новой суммы
+    pushAdd("pf", i, cur, next, applied, cur > 0);
+    recompute(); persistPfInputs();
+    if(invAddMode){ try{ inp.select(); }catch(e){} }
+    return;
+  }
+  delete addLog["pf:" + i];
+  inp.removeAttribute("title");
+  const val = Math.max(0, p.value);
+  setQ(i, val);
+  inp.dataset.base = val ? String(val) : "";
+  recompute(); persistPfInputs();
 }
 
 function recompute(){
@@ -971,6 +1162,7 @@ function resetAll(uploaded){
   } else {
     ALL_PF.forEach((r,i)=>setQ(i, 0));
   }
+  clearAddLogs("pf:");
   recompute();
   persistPfInputs();
 }
@@ -1021,8 +1213,32 @@ function buildPfCard(r, i){
   const inp = document.createElement("input");
   inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "0"; inp.enterKeyHint = "next";
   inp.autocomplete = "off"; inp.spellcheck = false;
-  inp.dataset.i = i; inp.addEventListener("input", ()=>{ recompute(); persistPfInputs(); });
-  inp.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextPf(i); } });
+  inp.dataset.i = i; selectOnFocus(inp);
+  inp.addEventListener("input", ()=>{
+    inp.dataset.committed = "";
+    if(invAddMode || /[+\-−–—]/.test(inp.value)){              // добавка/выражение: применим при подтверждении
+      inp.dataset.pending = "1";
+      inp.classList.add("addpending");
+      return;
+    }
+    recompute(); persistPfInputs();
+  });
+  inp.addEventListener("focus", ()=>{
+    inp.dataset.base = String(getQ(i) || "");   // значение до правки — от него считаем добавку
+  });
+  inp.addEventListener("change", ()=>{
+    if(inp.dataset.committed === "1"){ inp.dataset.committed = ""; return; }
+    commitPfInput(i, inp);
+  });
+  inp.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" || e.keyCode === 13){
+      e.preventDefault();
+      if(inp.dataset.pending === "1") commitPfInput(i, inp);
+      focusNextPf(i);
+    }
+  });
+  const lk = "pf:" + i;
+  if(addLog[lk] && addLog[lk].items.length) inp.title = addTitleText(lk, getQ(i));
   const bp = document.createElement("button");
   bp.textContent = "+"; bp.type = "button"; repeatOn(bp, ()=>addStep(i, 0.1));
   st.append(bm, inp, bp);
@@ -1067,6 +1283,45 @@ function toNum(v){
   if(s === "") return NaN;
   const x = parseFloat(s);
   return isNaN(x) ? NaN : x;
+}
+
+/* Разбор ввода в поле количества:
+   «1,5» — число; «+1,5» / «-1,5» — прибавить / вычесть;
+   «2,2+1,5-0,5» — сумма слагаемых (результат 3,2). */
+function parseAmount(raw){
+  let s = String(raw == null ? "" : raw).trim().replace(/\s+/g, "").replace(/[−–—]/g, "-");
+  if(!s) return { ok:false, delta:false, sign:1, value:NaN };
+  let delta = false, sign = 1;
+  if(s.charAt(0) === "+"){ delta = true; sign = 1; s = s.slice(1); }
+  else if(s.charAt(0) === "-"){ delta = true; sign = -1; s = s.slice(1); }
+  if(!s) return { ok:false, delta:delta, sign:sign, value:NaN };
+  let total = 0, curSign = 1, num = "";
+  for(let i=0;i<s.length;i++){
+    const ch = s.charAt(i);
+    if(ch === "+" || ch === "-"){
+      if(num === ""){ curSign = (ch === "-") ? -1 : 1; continue; }
+      const v = toNum(num);
+      if(isNaN(v)) return { ok:false, delta:delta, sign:sign, value:NaN };
+      total += curSign * v;
+      num = "";
+      curSign = (ch === "-") ? -1 : 1;
+    } else num += ch;
+  }
+  if(num === "") return { ok:false, delta:delta, sign:sign, value:NaN };
+  const last = toNum(num);
+  if(isNaN(last)) return { ok:false, delta:delta, sign:sign, value:NaN };
+  total += curSign * last;
+  return { ok:true, delta:delta, sign:sign, value:Math.round(total*1000)/1000 };
+}
+
+/* Выделение значения при фокусе: ввод заменяет число целиком, а не дописывается
+   в середину (иначе «+1,5» превращалось в «2.+1,5»). */
+function selectOnFocus(inp){
+  inp.addEventListener("focus", function(){
+    setTimeout(function(){
+      try{ if(document.activeElement === inp) inp.select(); }catch(e){}
+    }, 0);
+  });
 }
 function invJSON(k, d){ try{ const r = JSON.parse(localStorage.getItem(k)); return (r===null||r===undefined)?d:r; }catch(e){ return d; } }
 function invSetJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
@@ -1451,13 +1706,23 @@ async function doSbClear(){
 }
 
 let toastTimer = null;
-function toast(msg, type){
+function toast(msg, type, action){
   const el = document.getElementById("toast");
-  el.textContent = msg;
+  el.textContent = "";
+  const span = document.createElement("span");
+  span.textContent = msg;
+  el.appendChild(span);
+  if(action && typeof action.fn === "function"){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "toast-act"; b.textContent = action.label || "Отменить";
+    b.addEventListener("click", function(ev){ ev.stopPropagation(); try{ action.fn(); }catch(e){} });
+    el.appendChild(b);
+  }
   el.classList.toggle("err", type === "err");
+  el.classList.toggle("act", !!action);
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove("show"), 3000);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), action ? 8000 : 3000);
 }
 
 function renderRestSelect(){
@@ -1513,6 +1778,7 @@ function updateDiffByKey(key){
 
 function stepFor(u){ return u === "шт" ? 1 : 0.1; }
 function stepFact(key, inp, d){
+  if(inp && inp.dataset.pending === "1") commitFactInput(key, inp);   // сначала применить недописанную добавку
   const cur = invState.fact[key] !== undefined ? invState.fact[key] : 0;
   let next = Math.round((cur + d) * 1000) / 1000;
   if(next < 0) next = 0;
@@ -1679,27 +1945,35 @@ function renderGroupsInto(boxId, showDiff){
       const buildFactInput = ()=>{
         const f = document.createElement("input"); f.inputMode="decimal"; f.placeholder="0"; f.classList.add("factinp"); f.enterKeyHint="next"; f.dataset.key = key; f.autocomplete="off"; f.spellcheck=false;
         f.value = invState.fact[key] !== undefined ? invState.fact[key] : "";
+        selectOnFocus(f);
         f.addEventListener("input", ()=>{
+          f.dataset.committed = "";
+          if(invAddMode || /[+\-−–—]/.test(f.value)){           // добавка/выражение: применим при подтверждении
+            f.dataset.pending = "1";
+            f.classList.add("addpending");
+            return;
+          }
           if(f.value.trim()==="") delete invState.fact[key]; else invState.fact[key] = toNum(f.value)||0;
           updateDiffByKey(key); updateInvStats(); invSaveState();
           syncFactTwins(key, f);
         });
         f.addEventListener("change", ()=>{
-          let n = toNum(f.value) || 0;
-          if(n < 0) n = 0;
-          /* Явный ноль — это «посчитано, остаток 0»: храним его, иначе позиция
-             выглядит непосчитанной и весь расчёт уходит в недостачу. */
-          invState.fact[key] = n;
-          f.value = n;
-          updateDiffByKey(key); updateInvStats(); invSaveState();
-          syncFactTwins(key, f);
+          if(f.dataset.committed === "1"){ f.dataset.committed = ""; return; }
+          commitFactInput(key, f);
         });
         f.addEventListener("keydown", (e)=>{
-          if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); focusNextFact(f); return; }
+          if(e.key === "Enter" || e.keyCode === 13){
+            e.preventDefault();
+            if(f.dataset.pending === "1") commitFactInput(key, f);
+            focusNextFact(f);
+            return;
+          }
           // стрелки вверх/вниз — переход между полями «Факт» (влево/вправо двигают курсор в числе)
           if(e.key === "ArrowDown" || e.keyCode === 40){ e.preventDefault(); focusAdjacentFact(f, 1); return; }
           if(e.key === "ArrowUp" || e.keyCode === 38){ e.preventDefault(); focusAdjacentFact(f, -1); return; }
         });
+        const lk = "fact:" + key;
+        if(addLog[lk] && addLog[lk].items.length) f.title = addTitleText(lk, invState.fact[key]);
         return f;
       };
       const buildStepper = (f)=>{
@@ -2304,6 +2578,7 @@ function clearFact(uploaded){
     invState.fact = {};
   }
   invState.pfAdd = {};
+  clearAddLogs("fact:");
   invSaveState();
   renderInvGroups();
   updateInvStats();
@@ -2610,7 +2885,7 @@ function cleanStaleStock(rows, qtyCol){
       const k = goodKey(g.g, gd.n);
       if(present[canon(gd.n)]) return;
       let touched = false;
-      if(invState.fact[k] !== undefined){ delete invState.fact[k]; touched = true; }
+      if(invState.fact[k] !== undefined){ delete invState.fact[k]; delete addLog["fact:" + k]; touched = true; }
       if(invState.calc[k] !== undefined){ delete invState.calc[k]; touched = true; }
       if(invState.pfAdd && invState.pfAdd[k] !== undefined){ delete invState.pfAdd[k]; touched = true; }
       if(invState.counters && invState.counters[k] !== undefined){ delete invState.counters[k]; touched = true; }
@@ -3047,6 +3322,10 @@ function initInv(){
   });
   document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
   document.getElementById("btnCountMode").addEventListener("click", toggleCountMode);
+  ["btnAddMode", "btnAddModePf"].forEach(function(id){
+    const b = document.getElementById(id);
+    if(b) b.addEventListener("click", toggleAddMode);
+  });
   document.getElementById("btnAccept").addEventListener("click", sbAccept);
   document.getElementById("btnClearServer").addEventListener("click", sbClear);
   document.getElementById("btnSessionCreate").addEventListener("click", sbCreateSession);
