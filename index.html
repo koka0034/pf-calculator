@@ -1824,6 +1824,55 @@ function syncWrapWidth(){
   if(!wrap || !tab) return;
   wrap.classList.toggle("pc-wide", isDeskView() && !tab.classList.contains("hidden"));
 }
+
+/* ---------- Состояние страницы: вкладка, прокрутка, поиск, открытые группы ----------
+   Телефон при сворачивании может выгрузить страницу — после возврата всё остаётся как было. */
+const UI_LS = "pfcalc_ui_v1";
+let uiSaveTimer = null;
+function uiSnapshot(){
+  const active = document.querySelector(".tab-btn.active");
+  return {
+    tab: (active && active.dataset) ? active.dataset.tab : "inv",
+    scroll: Math.round(window.scrollY || 0),
+    q: invSearch || "",
+    showAll: !!invShowAll,
+    open: Array.prototype.map.call(document.querySelectorAll("#invCountGroups details.igrp[open]"), function(d){ return d.dataset.g; })
+  };
+}
+function saveUI(){
+  try{ localStorage.setItem(UI_LS, JSON.stringify(uiSnapshot())); }catch(e){}
+}
+function scheduleSaveUI(){
+  clearTimeout(uiSaveTimer);
+  uiSaveTimer = setTimeout(saveUI, 250);
+}
+function restoreUI(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(UI_LS) || "null"); }catch(e){ s = null; }
+  if(!s || typeof s !== "object") return;
+  if(typeof s.q === "string" && s.q){
+    invSearch = s.q;
+    const inp = document.getElementById("invSearch");
+    if(inp) inp.value = s.q;
+  }
+  if(typeof s.showAll === "boolean"){
+    invShowAll = s.showAll;
+    const f = document.getElementById("btnInvFilter");
+    if(f) f.textContent = invShowAll ? "Показать: все" : "Показать: только расхождения";
+  }
+  renderInvGroups();
+  if(Array.isArray(s.open)){
+    const openSet = {};
+    s.open.forEach(function(g){ openSet[g] = 1; });
+    Array.prototype.forEach.call(document.querySelectorAll("#invCountGroups details.igrp"), function(d){
+      d.open = !!openSet[d.dataset.g];
+    });
+  }
+  if(s.tab && ["inv", "count", "pf", "hist"].indexOf(s.tab) >= 0) switchTab(s.tab);
+  const y = Math.max(0, Number(s.scroll) || 0);
+  setTimeout(function(){ try{ window.scrollTo(0, y); }catch(e){} }, 0);
+  updateInvStats();
+}
 function changeViewMode(v){
   setViewPref(v);
   applyViewMode();
@@ -2348,7 +2397,8 @@ function renderInvDiff(){
       const f = counted ? ((invState.fact[key] || 0) + pf) : null;
       const c = invState.calc[key] || 0;
       const d = counted ? (f - c) : null;
-      if(!invShowAll && (d === null || Math.abs(d) < 0.0005)) return;
+      // нулевые расхождения не показываем никогда — ни в списке, ни в «Показать: все»
+      if(d === null || Math.abs(d) < 0.0005) return;
       rows.push({g:g.g, n:gd.n, u:gd.u, f:f, c:c, d:d});
     });
   });
@@ -2614,6 +2664,7 @@ function printDiff(){
       const f = (invState.fact[key] || 0) + pf;
       const c = invState.calc[key] || 0;
       const d = f - c;
+      if(Math.abs(d) < 0.0005) return;   // без расхождения — в печать не идёт
       rows.push({g:g.g, n:gd.n, u:gd.u, f:f, c:c, d:d});
     });
   });
@@ -3136,6 +3187,7 @@ function switchTab(tab){
   document.getElementById("tab-pf").classList.toggle("hidden", tab !== "pf");
   document.getElementById("tab-hist").classList.toggle("hidden", tab !== "hist");
   if(typeof syncWrapWidth === "function") syncWrapWidth();   // широкий контейнер только для «Товаров» в ПК-режиме
+  if(typeof scheduleSaveUI === "function") scheduleSaveUI();
 }
 
 const RPT_HEADERS = new Set(["наименование","наименование товара","наименован","товар","название","итого"]);
@@ -3339,11 +3391,12 @@ document.getElementById("btnCountClearFact").addEventListener("click", invClearF
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
   document.getElementById("impColSel").addEventListener("change", (e)=>{ localStorage.setItem(impColKey(), impColLabel(e.target.value)); runImport(e.target.value); });
-  document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); });
+  document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); scheduleSaveUI(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
     document.getElementById("btnInvFilter").textContent = invShowAll ? "Показать: все" : "Показать: только расхождения";
     renderInvDiff();
+    scheduleSaveUI();
   });
 }
 
@@ -3375,6 +3428,16 @@ renderHist();
 renderSessionInfo();
 loadRole();
 applyRole();
+restoreUI();          // вкладка, поиск, открытые группы, прокрутка — как были до сворачивания
+
+/* Сохраняем состояние при сворачивании/уходе со страницы */
+(function(){
+  var box = document.getElementById("invCountGroups");
+  if(box) box.addEventListener("toggle", scheduleSaveUI, true);
+  window.addEventListener("scroll", scheduleSaveUI, { passive: true });
+  window.addEventListener("pagehide", saveUI);
+  document.addEventListener("visibilitychange", function(){ if(document.hidden) saveUI(); });
+})();
 
 /* Переключатель ПК/телефон: клик по активному сегменту возвращает авто-режим */
 (function(){
