@@ -486,6 +486,24 @@
   .pck .fstep{justify-content:flex-end}
   .pck .fstep button{width:26px;height:28px;min-width:26px;font-size:14px;border-radius:7px}
   .pck .fstep input{width:56px;max-width:56px;height:28px;font-size:14px}
+  .pck.no-calc .thead,.pck.no-calc .drow{grid-template-columns:minmax(0,1fr) 38px 124px 58px 54px 88px 104px}
+
+  /* ── строка «Расчёт»: показывать расчётное количество и откуда его брать ── */
+  .calcbar{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+  .calcbtn{height:34px;padding:0 11px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:600;
+    cursor:pointer;flex:0 0 auto}
+  .calcbtn.on{border-color:var(--color-green);color:var(--color-green);background:var(--card2)}
+  .calcsrc{display:flex;align-items:center;gap:6px;flex:0 1 320px;min-width:0;font-size:12px;color:var(--muted)}
+  .calcsrc span{flex:0 0 auto}
+  .calcsrc select{flex:1;min-width:0;height:34px;padding:0 8px;border-radius:10px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);
+    font-family:inherit;font-size:12.5px;font-weight:600}
+  .calcsrc select:disabled{opacity:.55}
+  @media (max-width:520px){ .calcsrc{flex:1 1 auto} }
+  .goods .gcalc{font-size:12px;line-height:1.3;margin-top:3px;color:var(--muted)}
+  .goods .gcalc b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+  .lcalc .num{font-size:15px;font-variant-numeric:tabular-nums;color:var(--text)}
 
   /* ── режим «Суммировать» ── */
   .addbtn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 11px;border-radius:11px;
@@ -662,6 +680,10 @@
       </div>
     </div>
     <p class="sub addnote">± Суммировать: введённое прибавляется к текущему, «−1,5» — вычитается (можно без режима)</p>
+    <div class="calcbar">
+      <button type="button" id="btnCalc" class="calcbtn on" aria-pressed="true" title="Показывать расчётное количество для сверки">Расчёт</button>
+      <label class="calcsrc" for="calcSrc"><span>Источник</span><select id="calcSrc" class="hsel"></select></label>
+    </div>
     <div class="progwrap">
       <div class="prog-label"><span>Посчитано</span><b id="countProgPct">0%</b></div>
       <div class="progbar"><div class="progfill" id="countProgFill"></div></div>
@@ -1068,11 +1090,62 @@ function updatePfAdd(c){
   return changed;
 }
 
+/* ---------- Источник расчётного количества ----------
+   Из отчёта «Остатки на складах» сохраняем все числовые колонки (Итого, Бар, Кухня…),
+   чтобы в «Товарах» можно было переключать источник без повторного импорта. */
+function calcSourceLabels(){
+  return Object.keys(invState.calcByCol || {});
+}
+/* Понятные подписи: колонка «Итого» → «Все склады (итого)», «… Кухня» → «Кухня», «… Бар» → «Бар» */
+function calcSourceLabel(l){
+  if(/итого/i.test(l)) return "Все склады (итого)";
+  if(/кухн/i.test(l)) return "Кухня";
+  if(/бар/i.test(l)) return "Бар";
+  return l;
+}
+function renderCalcSourceSelect(){
+  const sel = document.getElementById("calcSrc");
+  if(!sel) return;
+  const labels = calcSourceLabels();
+  if(!labels.length){
+    const hasOld = Object.keys(invState.calc || {}).length > 0;
+    sel.innerHTML = '<option value="">' + (hasOld ? "текущий расчёт (загрузите отчёт)" : "нет отчёта") + '</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = labels.map(function(l){ return '<option value="'+esc(l)+'">'+esc(calcSourceLabel(l))+'</option>'; }).join("");
+  sel.value = (invState.calcSource && (invState.calcSource in invState.calcByCol)) ? invState.calcSource : labels[0];
+}
+function applyCalcSource(label, silent){
+  const byCol = invState.calcByCol || {};
+  let src = label;
+  if(!src || !byCol[src]){
+    const labels = Object.keys(byCol);
+    src = (invState.calcSource && byCol[invState.calcSource]) ? invState.calcSource : (labels.length ? labels[0] : "");
+  }
+  invState.calcSource = src;
+  invState.calc = src ? Object.assign({}, byCol[src]) : {};
+  invSaveState();
+  renderCalcSourceSelect();
+  renderInvGroups();
+  updateInvStats();
+  renderInvDiff();
+  if(!silent) toast("Источник расчёта: " + (src ? calcSourceLabel(src) : "нет данных"));
+}
+function setCalcVisible(on){
+  invShowCalc = !!on;
+  const b = document.getElementById("btnCalc");
+  if(b){ b.classList.toggle("on", invShowCalc); b.setAttribute("aria-pressed", invShowCalc ? "true" : "false"); }
+  renderInvGroups();
+  renderInvDiff();
+  scheduleSaveUI();
+}
+
 function getHist(){
   try{ return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
   catch(e){ return []; }
-}
-function setHist(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+}function setHist(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
 
 function saveRecord(){
   const ts = localNow();
@@ -1267,6 +1340,7 @@ let invRest = "";
 let invState = { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
 let invShowAll = false;
 let invImportMode = "tsv";
+let invShowCalc = true;   // показывать расчётное количество (кнопка «Расчёт»)
 let invSearch = "";
 let invShowDiff = false;
 
@@ -1340,10 +1414,11 @@ function invPersistRests(){ invSetJSON(INV_LS + "_rests", invRestaurants); }
 
 function invRestKey(r){ return INV_LS + "_data::" + r; }
 function invLoadState(r){
-  if(!r) return { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
+  const empty = { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, calcByCol:{}, calcSource:"", name:"", date:"" };
+  if(!r) return empty;
   const d = invJSON(invRestKey(r), null);
-  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, pfAdd:d.pfAdd||{}, costs:d.costs||{}, name:d.name||"", date:d.date||"" };
-  return { counters:{}, fact:{}, calc:{}, pfAdd:{}, costs:{}, name:"", date:"" };
+  if(d && typeof d === "object") return { counters:d.counters||{}, fact:d.fact||{}, calc:d.calc||{}, pfAdd:d.pfAdd||{}, costs:d.costs||{}, calcByCol:d.calcByCol||{}, calcSource:d.calcSource||"", name:d.name||"", date:d.date||"" };
+  return empty;
 }
 function invSaveState(){
   if(!invRest) return;
@@ -1836,6 +1911,7 @@ function uiSnapshot(){
     scroll: Math.round(window.scrollY || 0),
     q: invSearch || "",
     showAll: !!invShowAll,
+    calc: !!invShowCalc,
     open: Array.prototype.map.call(document.querySelectorAll("#invCountGroups details.igrp[open]"), function(d){ return d.dataset.g; })
   };
 }
@@ -1860,7 +1936,13 @@ function restoreUI(){
     const f = document.getElementById("btnInvFilter");
     if(f) f.textContent = invShowAll ? "Показать: все" : "Показать: только расхождения";
   }
+  if(typeof s.calc === "boolean"){
+    invShowCalc = s.calc;
+    const cb = document.getElementById("btnCalc");
+    if(cb){ cb.classList.toggle("on", invShowCalc); cb.setAttribute("aria-pressed", invShowCalc ? "true" : "false"); }
+  }
   renderInvGroups();
+  renderCalcSourceSelect();
   if(Array.isArray(s.open)){
     const openSet = {};
     s.open.forEach(function(g){ openSet[g] = 1; });
@@ -1880,7 +1962,10 @@ function changeViewMode(v){
 }
 function buildDeskHead(){
   const h = document.createElement("div"); h.className = "thead";
-  ["Наименование", "Ед.", "Факт", "Из ПФ", "Расчёт", "±", "Цена ₽", "Сумма ₽"].forEach(function(txt){
+  const cols = ["Наименование", "Ед.", "Факт", "Из ПФ"];
+  if(invShowCalc) cols.push("Расчёт");
+  cols.push("±", "Цена ₽", "Сумма ₽");
+  cols.forEach(function(txt){
     const s = document.createElement("span"); s.textContent = txt;
     h.appendChild(s);
   });
@@ -1977,7 +2062,7 @@ function renderGroupsInto(boxId, showDiff){
     let tbl;
     if(pcView){
       tbl = document.createElement("div");
-      tbl.className = "goods pck";
+      tbl.className = "goods pck" + (invShowCalc ? "" : " no-calc");
       tbl.appendChild(buildDeskHead());
     } else {
       tbl = document.createElement(showDiff ? "div" : "table");
@@ -2050,7 +2135,6 @@ function renderGroupsInto(boxId, showDiff){
         const pfEl = document.createElement("span"); pfEl.className = "num"; pfEl.textContent = pf > 0 ? fmt(pf) : "—";
         const calcVal = invState.calc[key] || 0;
         const calcEl = document.createElement("span"); calcEl.className = "num"; calcEl.textContent = calcVal > 0 ? fmt(calcVal) : "—";
-
         const dEl = document.createElement("span"); dEl.className = "num diff";
         dEl.dataset.diffBase = "num diff";
         (diffCells[key] = diffCells[key] || []).push(dEl);
@@ -2063,7 +2147,9 @@ function renderGroupsInto(boxId, showDiff){
         mEl.dataset.moneyBase = "num money";
         (moneyCells[key] = moneyCells[key] || []).push(mEl);
 
-        row.append(nm, uEl, st, pfEl, calcEl, dEl, priceEl, mEl);
+        row.append(nm, uEl, st, pfEl);
+        if(invShowCalc) row.appendChild(calcEl);
+        row.append(dEl, priceEl, mEl);
         tbl.appendChild(row);
         updateDiffByKey(key);
         return;
@@ -2087,6 +2173,16 @@ function renderGroupsInto(boxId, showDiff){
         pfVal.textContent = (invState.pfAdd && invState.pfAdd[key] !== undefined) ? fmt(invState.pfAdd[key]) : "—";
         pfWrap.appendChild(pfVal);
 
+        let cWrap = null;
+        if(invShowCalc){
+          cWrap = document.createElement("div"); cWrap.className = "lcalc";
+          cWrap.innerHTML = '<span class="lcap">расчёт</span>';
+          const cVal = document.createElement("span"); cVal.className = "num";
+          const cv = invState.calc[key] || 0;
+          cVal.textContent = cv > 0 ? fmt(cv) : "—";
+          cWrap.appendChild(cVal);
+        }
+
         const dWrap = document.createElement("div"); dWrap.className = "ldiff";
         dWrap.innerHTML = '<span class="lcap">±</span>';
         const tdDiff = document.createElement("span"); tdDiff.className = "diff";
@@ -2106,6 +2202,7 @@ function renderGroupsInto(boxId, showDiff){
         }
 
         metr.append(pfWrap, dWrap);
+        if(cWrap) metr.insertBefore(cWrap, pfWrap);
         if(mWrap) metr.appendChild(mWrap);
         row.append(nameEl, metr);
         tbl.appendChild(row);
@@ -2116,6 +2213,14 @@ function renderGroupsInto(boxId, showDiff){
         const nmSpan = document.createElement("span"); nmSpan.textContent = gd.n;
         const unSpan = document.createElement("span"); unSpan.className = "unit"; unSpan.textContent = " " + gd.u;
         tdName.append(nmSpan, unSpan);
+        // расчётное количество — отдельной строкой под названием (можно скрыть кнопкой «Расчёт»)
+        if(invShowCalc && (invState.calc[key] || 0) > 0){
+          const cLine = document.createElement("div"); cLine.className = "gcalc";
+          const cLab = document.createElement("span"); cLab.textContent = "расчёт ";
+          const cB = document.createElement("b"); cB.textContent = fmt(invState.calc[key]);
+          cLine.append(cLab, cB);
+          tdName.appendChild(cLine);
+        }
         // недостача по строке — отдельной строкой под названием, чтобы не сжимать поле ввода
         if(hasCosts){
           const mLine = document.createElement("div"); mLine.className = "gmoney";
@@ -2917,18 +3022,22 @@ function renderImpCol(cols, selected){
 /* Протухшие остатки от прежних импортов: позиции, которых нет в свежей выгрузке,
    очищаются — иначе старые количества продолжают участвовать в расчёте недостачи
    (например, товар выбыл из отчёта, а факт по нему остался с прошлого раза). */
-function cleanStaleStock(rows, qtyCol){
-  const present = {};
+function cleanStaleStock(rows, qtyCol, presentOverride){
+  const present = presentOverride || {};
   let matched = 0;
-  rows.forEach(pr=>{
-    if(!pr) return;
-    const k = canon(pr.name);
-    if(!k) return;
-    const q = impValue(pr, qtyCol);
-    if(isNaN(q)) return;
-    present[k] = true;
-    matched++;
-  });
+  if(presentOverride){
+    matched = Object.keys(present).length;
+  } else {
+    rows.forEach(pr=>{
+      if(!pr) return;
+      const k = canon(pr.name);
+      if(!k) return;
+      const q = impValue(pr, qtyCol);
+      if(isNaN(q)) return;
+      present[k] = true;
+      matched++;
+    });
+  }
   if(!matched) return {cleared:0, matched:0};   // ничего не распознали — не трогаем данные
   let cleared = 0;
   INV_GROUPS.forEach(g=>{
@@ -2938,6 +3047,7 @@ function cleanStaleStock(rows, qtyCol){
       let touched = false;
       if(invState.fact[k] !== undefined){ delete invState.fact[k]; delete addLog["fact:" + k]; touched = true; }
       if(invState.calc[k] !== undefined){ delete invState.calc[k]; touched = true; }
+      if(invState.calcByCol){ for(const c in invState.calcByCol){ if(invState.calcByCol[c]) delete invState.calcByCol[c][k]; } }
       if(invState.pfAdd && invState.pfAdd[k] !== undefined){ delete invState.pfAdd[k]; touched = true; }
       if(invState.counters && invState.counters[k] !== undefined){ delete invState.counters[k]; touched = true; }
       if(touched) cleared++;
@@ -2950,22 +3060,73 @@ function cleanStaleStock(rows, qtyCol){
   return {cleared:cleared, matched:matched};
 }
 
-function runImport(colIdx){
+/* Все числовые колонки отчёта → карта {label: {goodKey: qty}}. */
+function buildCalcByCol(rows, cols){
+  const nameKey = {};
+  INV_GROUPS.forEach(function(g){ g.goods.forEach(function(gd){ nameKey[canon(gd.n)] = goodKey(g.g, gd.n); }); });
+  const out = {};
+  (cols || []).forEach(function(c){
+    const map = {};
+    (rows || []).forEach(function(pr){
+      if(!pr) return;
+      const k = nameKey[canon(pr.name)];
+      if(!k) return;
+      const q = impValue(pr, c.i);
+      if(isNaN(q)) return;
+      map[k] = Math.round(q * 1000) / 1000;
+    });
+    out[c.label] = map;
+  });
+  return out;
+}
+
+function runImport(colIdx, forceSourceLabel){
   const res = document.getElementById("invImportRes");
   if(!lastImport) return;
   const ci = (colIdx === null || colIdx === undefined || colIdx === "") ? null : Number(colIdx);
   const cols = lastImport.cols || [];
   const lbl = (ci === null) ? "крайний правый столбец" : (((cols.filter(c=>c.i === ci)[0]) || {}).label || ("Столбец " + (ci+1)));
-  const r2 = applyRows(lastImport.rows, "calc", ci);
-  const stale = r2.existing ? cleanStaleStock(lastImport.rows, ci) : {cleared:0};
-  const warn = r2.existing ? "" : " · ни одна позиция не совпала — проверь склад вверху страницы";
-  res.textContent = "Файл «" + lastImport.fileName + "»: столбец «" + lbl + "» · обновлено " + r2.existing
-    + " · пропущено (нет в бланке) " + r2.skipped
+  let existing = 0, skipped = 0, src = "";
+  const byCol = buildCalcByCol(lastImport.rows, cols);
+  const labels = Object.keys(byCol);
+  if(labels.length){
+    // «Итого» — по умолчанию; иначе выбранный столбец; выбор из «Товаров» не сбрасываем
+    if(forceSourceLabel && byCol[forceSourceLabel]) src = forceSourceLabel;
+    else {
+      const total = labels.filter(function(l){ return /итого/i.test(l); })[0];
+      src = total || (invState.calcSource && byCol[invState.calcSource] ? invState.calcSource : "") || lbl;
+      if(!byCol[src]) src = labels[0];
+    }
+    invState.calcByCol = byCol;
+    invState.calcSource = src;
+    invState.calc = Object.assign({}, byCol[src]);
+    invSaveState();
+    existing = Object.keys(invState.calc).length;
+    skipped = Math.max(0, lastImport.rows.length - existing);
+  } else {
+    const r2 = applyRows(lastImport.rows, "calc", ci);
+    existing = r2.existing; skipped = r2.skipped;
+  }
+  // позиции, которые есть в свежем отчёте хотя бы в одной колонке
+  const presentNames = {};
+  lastImport.rows.forEach(function(pr){
+    if(!pr) return;
+    let any = false;
+    cols.forEach(function(c){ if(!isNaN(impValue(pr, c.i))) any = true; });
+    if(any || !cols.length) presentNames[canon(pr.name)] = true;
+  });
+  const stale = existing ? cleanStaleStock(lastImport.rows, ci, presentNames) : {cleared:0};
+  renderCalcSourceSelect();
+  renderInvGroups(); updateInvStats(); renderInvDiff();
+  const warn = existing ? "" : " · ни одна позиция не совпала — проверь склад вверху страницы";
+  res.textContent = "Файл «" + lastImport.fileName + "»: столбец «" + lbl + "»"
+    + (src ? " · источник расчёта: «" + calcSourceLabel(src) + "»" : "")
+    + " · обновлено " + existing + " · пропущено (нет в бланке) " + skipped
     + (stale.cleared ? " · очищено устаревших " + stale.cleared : "")
-    + (r2.existing ? "" : (lastImport.sample && lastImport.sample.length ? " · пример: " + lastImport.sample.join(" · ") : ""))
+    + (existing ? "" : (lastImport.sample && lastImport.sample.length ? " · пример: " + lastImport.sample.join(" · ") : ""))
     + warn;
-  if(r2.existing){
-    toast("Импорт: обновлено " + r2.existing + " поз."
+  if(existing){
+    toast("Импорт: обновлено " + existing + " поз."
       + (stale.cleared ? " · очищено устаревших " + stale.cleared : ""));
   }
 }
@@ -3349,9 +3510,22 @@ document.getElementById("btnReport").addEventListener("click", runReport);
 
 function syncInvSetup(){ /* дата как поле убрана — отчёт/бланк берут сегодняшнюю */ }
 
+/* Склад «Кухня(в разработке)» переименован в «Кухня» — переносим сохранённые данные. */
+function migrateKitchenName(){
+  const oldName = "Кухня(в разработке)", newName = "Кухня";
+  if(localStorage.getItem(INV_LS + "_rest") === oldName) localStorage.setItem(INV_LS + "_rest", newName);
+  ["_data::", "_cost::", "_dict_v3::"].forEach(function(p){
+    const oldK = INV_LS + p + oldName, newK = INV_LS + p + newName;
+    const v = localStorage.getItem(oldK);
+    if(v !== null && localStorage.getItem(newK) === null){ localStorage.setItem(newK, v); localStorage.removeItem(oldK); }
+  });
+}
+
 function initInv(){
-  invRestaurants = ["Бар", "Кухня(в разработке)", "Посуда", "Карты", "Форма", "Имущество"];
+  invRestaurants = ["Бар", "Кухня", "Посуда", "Карты", "Форма", "Имущество"];
+  migrateKitchenName();
   invRest = localStorage.getItem(INV_LS + "_rest") || "Бар";
+  if(invRest.indexOf("Кухня") === 0) invRest = "Кухня";
   renderRestSelect();
   INV_GROUPS = invLoadDict();
   invState = invLoadState(invRest);
@@ -3360,6 +3534,7 @@ function initInv(){
   applyViewMode();                  // ПК/телефон: авто по ширине + сохранённый выбор
   renderInvGroups();
   updateInvStats();
+  renderCalcSourceSelect();
 
   document.getElementById("invRest").addEventListener("change", ()=>{
     invRest = document.getElementById("invRest").value;
@@ -3370,8 +3545,10 @@ function initInv(){
     invState = invLoadState(invRest);
     invState.costs = invLoadCosts();
     dedupeGoodsDictionary();
-    renderInvGroups(); updateInvStats();
+    renderInvGroups(); updateInvStats(); renderCalcSourceSelect();
   });
+  document.getElementById("btnCalc").addEventListener("click", function(){ setCalcVisible(!invShowCalc); });
+  document.getElementById("calcSrc").addEventListener("change", function(e){ applyCalcSource(e.target.value); });
   document.getElementById("btnCountToggle").addEventListener("click", toggleCountGroups);
   document.getElementById("btnCountMode").addEventListener("click", toggleCountMode);
   ["btnAddMode", "btnAddModePf"].forEach(function(id){
@@ -3390,7 +3567,7 @@ document.getElementById("btnCountClearFact").addEventListener("click", invClearF
   document.getElementById("btnBlankImport").addEventListener("click", ()=>{ document.getElementById("blankFile").click(); });
   document.getElementById("blankFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleBlankFile(f); e.target.value = ""; });
   document.getElementById("calcFile").addEventListener("change", (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
-  document.getElementById("impColSel").addEventListener("change", (e)=>{ localStorage.setItem(impColKey(), impColLabel(e.target.value)); runImport(e.target.value); });
+  document.getElementById("impColSel").addEventListener("change", (e)=>{ localStorage.setItem(impColKey(), impColLabel(e.target.value)); runImport(e.target.value, impColLabel(e.target.value)); });
   document.getElementById("invSearch").addEventListener("input", (e)=>{ invSearch = e.target.value; renderInvGroups(); scheduleSaveUI(); });
   document.getElementById("btnInvFilter").addEventListener("click", ()=>{
     invShowAll = !invShowAll;
